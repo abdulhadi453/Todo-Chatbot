@@ -1,0 +1,251 @@
+# API Contracts: Phase III AI Todo Chatbot – Chatbot Core Integration
+
+**Feature**: 006-ai-chatbot
+**Created**: 2026-02-06
+**Status**: Complete
+
+## Chat Endpoint: POST /api/{user_id}/chat
+
+### Description
+Handles chat interactions between user and AI assistant. Creates new conversation if none provided, adds user message, processes with AI, and returns AI response.
+
+### Authentication
+- **Type**: JWT Bearer Token
+- **Required**: Yes
+- **Header**: `Authorization: Bearer <jwt_token>`
+- **Validation**: Token must be valid and user_id in token must match user_id in URL
+
+### Request Parameters
+
+#### Path Parameters
+- **user_id** (string, required)
+  - Format: UUID
+  - Description: ID of the authenticated user
+  - Validation: Must match authenticated user's ID
+
+#### Request Body
+```json
+{
+  "conversation_id": {
+    "type": "string",
+    "format": "uuid",
+    "required": false,
+    "description": "ID of existing conversation to continue. If omitted, a new conversation is created."
+  },
+  "message": {
+    "type": "string",
+    "required": true,
+    "min_length": 1,
+    "max_length": 10000,
+    "description": "The message content from the user"
+  },
+  "model_preferences": {
+    "type": "object",
+    "required": false,
+    "description": "Optional preferences for AI model behavior",
+    "properties": {
+      "temperature": {
+        "type": "number",
+        "minimum": 0.0,
+        "maximum": 2.0,
+        "description": "Controls randomness in response generation"
+      }
+    }
+  }
+}
+```
+
+### Response Codes
+- **200 OK**: Successfully processed message and generated response
+- **400 Bad Request**: Invalid request parameters or content
+- **401 Unauthorized**: Missing or invalid authentication token
+- **403 Forbidden**: User attempting to access another user's conversations
+- **404 Not Found**: Requested conversation doesn't exist or belong to user
+- **500 Internal Server Error**: Server error during processing
+
+### Success Response (200 OK)
+```json
+{
+  "conversation_id": "string (uuid)",
+  "response": "string",
+  "timestamp": "string (ISO 8601 datetime)",
+  "message_id": "string (uuid)",
+  "conversation_title": "string (auto-generated if new conversation)"
+}
+```
+
+### Error Response (4xx/5xx)
+```json
+{
+  "error": "string",
+  "code": "string",
+  "details": "object (optional)"
+}
+```
+
+### Examples
+
+#### Successful Request
+```
+POST /api/a1b2c3d4-e5f6-7890-1234-567890abcdef/chat
+Authorization: Bearer <valid_jwt_token>
+Content-Type: application/json
+
+{
+  "message": "What tasks do I have scheduled for tomorrow?",
+  "model_preferences": {
+    "temperature": 0.7
+  }
+}
+```
+
+#### Successful Response
+```
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "conversation_id": "f0e9d8c7-b6a5-4321-fedc-ba9876543210",
+  "response": "Based on your task list, you have 3 tasks scheduled for tomorrow: Complete project proposal, Schedule team meeting, and Review quarterly reports.",
+  "timestamp": "2026-02-06T10:30:45.123Z",
+  "message_id": "z9y8x7w6-v5u4-3210-t9s8-r7q6p5o4n3m2",
+  "conversation_title": "Tasks for Tomorrow"
+}
+```
+
+## Conversation Management Endpoints
+
+### GET /api/{user_id}/conversations
+
+#### Description
+Retrieve all conversations for the specified user, ordered by most recent activity.
+
+#### Authentication
+- **Type**: JWT Bearer Token
+- **Required**: Yes
+
+#### Response
+- **200 OK**: List of user's conversations
+- **401 Unauthorized**: Invalid authentication
+- **403 Forbidden**: User mismatch
+- **500 Internal Server Error**: Server error
+
+```json
+{
+  "conversations": [
+    {
+      "id": "string (uuid)",
+      "title": "string",
+      "created_at": "string (ISO 8601 datetime)",
+      "updated_at": "string (ISO 8601 datetime)",
+      "message_count": "integer"
+    }
+  ]
+}
+```
+
+### GET /api/{user_id}/conversations/{conversation_id}
+
+#### Description
+Retrieve a specific conversation and its message history.
+
+#### Authentication
+- **Type**: JWT Bearer Token
+- **Required**: Yes
+
+#### Response
+- **200 OK**: Conversation and messages
+- **401 Unauthorized**: Invalid authentication
+- **403 Forbidden**: User doesn't own conversation
+- **404 Not Found**: Conversation doesn't exist
+- **500 Internal Server Error**: Server error
+
+```json
+{
+  "conversation": {
+    "id": "string (uuid)",
+    "title": "string",
+    "created_at": "string (ISO 8601 datetime)",
+    "updated_at": "string (ISO 8601 datetime)"
+  },
+  "messages": [
+    {
+      "id": "string (uuid)",
+      "role": "string (user|assistant)",
+      "content": "string",
+      "timestamp": "string (ISO 8601 datetime)"
+    }
+  ]
+}
+```
+
+### DELETE /api/{user_id}/conversations/{conversation_id}
+
+#### Description
+Delete a specific conversation and all its messages.
+
+#### Authentication
+- **Type**: JWT Bearer Token
+- **Required**: Yes
+
+#### Response
+- **204 No Content**: Successfully deleted
+- **401 Unauthorized**: Invalid authentication
+- **403 Forbidden**: User doesn't own conversation
+- **404 Not Found**: Conversation doesn't exist
+- **500 Internal Server Error**: Server error
+
+## Common Error Responses
+
+### 400 Bad Request
+```json
+{
+  "error": "Invalid request parameters",
+  "code": "INVALID_PARAMS",
+  "details": {
+    "message": "Message content is required and cannot exceed 10000 characters"
+  }
+}
+```
+
+### 401 Unauthorized
+```json
+{
+  "error": "Authentication required",
+  "code": "AUTH_REQUIRED"
+}
+```
+
+### 403 Forbidden
+```json
+{
+  "error": "Access denied",
+  "code": "ACCESS_DENIED",
+  "details": {
+    "reason": "User does not have access to this conversation"
+  }
+}
+```
+
+### 500 Internal Server Error
+```json
+{
+  "error": "An unexpected error occurred",
+  "code": "INTERNAL_ERROR"
+}
+```
+
+## Security Requirements
+
+1. **JWT Token Validation**: All endpoints require valid JWT tokens with matching user IDs
+2. **Cross-User Access Prevention**: Users can only access their own conversations
+3. **Rate Limiting**: API endpoints should implement rate limiting to prevent abuse
+4. **Input Sanitization**: All inputs must be sanitized to prevent injection attacks
+5. **Response Filtering**: Ensure no sensitive information is exposed in responses
+
+## Performance Requirements
+
+1. **Response Time**: 95% of requests should respond within 5 seconds
+2. **Throughput**: Support at least 100 concurrent users
+3. **Database Queries**: All queries should complete within 2 seconds
+4. **Message History**: Paginate long conversation histories to improve performance
