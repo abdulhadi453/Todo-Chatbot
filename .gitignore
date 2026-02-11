@@ -74,3 +74,4 @@ build
 .next/
 .nuxt/
 out/
+!/frontend/src/lib/

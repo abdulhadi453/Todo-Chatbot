@@ -7,7 +7,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../../src/context/auth-context';
-import { chatApi } from '../../src/lib/api/chatClient';
+import { chatApi } from '@/lib/api/chatClient';
 import { MessageHistory } from '../../src/components/MessageHistory';
 import { MessageInput } from '../../src/components/MessageInput';
 import { LoadingIndicator } from '../../src/components/LoadingIndicator';
