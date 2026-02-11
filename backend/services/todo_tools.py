@@ -8,7 +8,7 @@ from sqlmodel import Session, select
 from datetime import datetime
 import uuid
 
-from backend.models.task import Task  # Assuming the task model exists from Phase II
+from backend.handlers.task_handler import Task  # Assuming the task model exists from Phase II
 from backend.models.agent_tool import AgentTool
 from backend.models.tool_execution_log import ToolExecutionLog
 from backend.models.user_context import UserContext  # Import UserContext for validation

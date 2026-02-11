@@ -4,9 +4,9 @@ This service follows the single responsibility principle for user management fun
 """
 
 from typing import List, Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, timedelta
 from sqlmodel import Session, select
-from backend.models.user import User  # Assuming a User model exists
+from backend.handlers.user_handler import User  # Assuming a User model exists
 from backend.core.dependency_injection import register_service, Injectable
 from backend.utils.validator_utils import validate_email, validate_required_fields
 from backend.utils.error_utils import ValidationError, NotFoundError, ServiceError

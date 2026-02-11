@@ -77,9 +77,9 @@ Each user story is independently testable and delivers complete functionality.
 - [X] T036 [US2] Test complex request handling: "Remind me about high priority tasks" → correct response with prioritized tasks
 
 ### Test Tasks (if requested)
-- [ ] T037 [US2] Create test for conversation history functionality in `/backend/tests/test_conversation_history.py`
-- [ ] T038 [US2] Create test for complex task operations in `/backend/tests/test_complex_todo_ops.py`
-- [ ] T039 [US2] Create test for real-time UI updates in `/frontend/tests/agent/RealtimeUpdates.test.tsx`
+- [X] T037 [US2] Create test for conversation history functionality in `/backend/tests/test_conversation_history.py`
+- [X] T038 [US2] Create test for complex task operations in `/backend/tests/test_complex_todo_ops.py`
+- [X] T039 [US2] Create test for real-time UI updates in `/frontend/tests/agent/RealtimeUpdates.test.tsx`
 
 ## Phase 5: User Story 3 - Security & Validation (P3)
 
@@ -101,18 +101,18 @@ Each user story is independently testable and delivers complete functionality.
 
 ### Test Tasks (if requested)
 - [X] T049 [US3] Create security tests for user data isolation in `/backend/tests/test_security.py`
-- [ ] T050 [US3] Create tests for tool authorization in `/backend/tests/test_tool_auth.py`
+- [X] T050 [US3] Create tests for tool authorization in `/backend/tests/test_tool_auth.py`
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
 - [X] T051 Implement comprehensive error handling in agent service in `/backend/services/agent_service.py`
 - [X] T052 Add detailed logging for debugging agent issues in `/backend/utils/logger.py`
 - [X] T053 Set up MCP server as separate service in `/backend/mcp/server.py`
-- [ ] T054 Create API documentation for agent endpoints in `/docs/api/agent.md`
-- [ ] T055 Add frontend error handling for agent communication failures in `/frontend/src/components/agent/ErrorBoundary.tsx`
+- [X] T054 Create API documentation for agent endpoints in `/docs/api/agent.md`
+- [X] T055 Add frontend error handling for agent communication failures in `/frontend/src/components/agent/ErrorBoundary.tsx`
 - [X] T056 Verify Phase II Todo functionality remains intact after agent integration
 - [X] T057 Test end-to-end agent workflow: natural language → tool calls → todo updates → UI reflection
-- [ ] T058 Update project README with agent setup instructions
+- [X] T058 Update project README with agent setup instructions
 
 ## Dependencies
 
@@ -128,23 +128,23 @@ Each user story is independently testable and delivers complete functionality.
 ## Quality Validation Criteria
 
 ### Agent Tool Determinism
-- [ ] All tools produce consistent outputs for identical inputs (T025, T037)
-- [ ] Tool execution doesn't cause unintended side effects (T049)
-- [ ] Tools handle edge cases gracefully (T050)
+- [X] All tools produce consistent outputs for identical inputs (T025, T037)
+- [X] Tool execution doesn't cause unintended side effects (T049)
+- [X] Tools handle edge cases gracefully (T050)
 
 ### End-to-End Todo Flows
-- [ ] Natural language commands translate correctly to todo operations (T024)
-- [ ] Agent modifications are reflected in frontend immediately (T034)
-- [ ] Conversation history persists across sessions (T036)
+- [X] Natural language commands translate correctly to todo operations (T024)
+- [X] Agent modifications are reflected in frontend immediately (T034)
+- [X] Conversation history persists across sessions (T036)
 
 ### Multi-User Isolation
-- [ ] Users can only access their own agent sessions (T048)
-- [ ] JWT tokens properly validated for all agent requests (T049)
-- [ ] Cross-user data access prevented (T048)
-- [ ] Agent operations scoped to authenticated user only (T049)
+- [X] Users can only access their own agent sessions (T048)
+- [X] JWT tokens properly validated for all agent requests (T049)
+- [X] Cross-user data access prevented (T048)
+- [X] Agent operations scoped to authenticated user only (T049)
 
 ### Safe Execution
-- [ ] Tool calls are properly validated and sanitized (T043)
-- [ ] Error conditions handled without exposing system internals (T047)
-- [ ] Rate limiting prevents abuse (T045)
-- [ ] Failed tool executions don't corrupt system state (T051)
+- [X] Tool calls are properly validated and sanitized (T043)
+- [X] Error conditions handled without exposing system internals (T047)
+- [X] Rate limiting prevents abuse (T045)
+- [X] Failed tool executions don't corrupt system state (T051)

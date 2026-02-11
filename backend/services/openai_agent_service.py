@@ -11,12 +11,12 @@ from datetime import datetime
 import uuid
 
 from openai import OpenAI, OpenAIError, APITimeoutError, APIConnectionError
-from backend.services.agent_service import AgentService
-from backend.services.todo_tools import TodoTools
-from backend.config.agent_config import AgentConfig
-from backend.models.agent_message import AgentMessage
-from backend.models.agent_session import AgentSession
-from backend.exceptions.chat_exceptions import ValidationError
+from services.agent_service import AgentService
+from ..services.todo_tools import TodoTools
+from ..config.agent_config import AgentConfig
+# from ..models.agent_message import AgentMessage
+from ..models.agent_session import AgentSession
+from exceptions.chat_exceptions import UnauthorizedAccessException, ValidationError
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

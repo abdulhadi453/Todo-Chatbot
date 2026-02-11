@@ -7,10 +7,10 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 from sqlmodel import Session, select, asc, desc
 import uuid
-from backend.models.conversation import Conversation
-from backend.models.message import Message
-from backend.models.user import User  # Assuming User model exists from Phase II
-from backend.auth.jwt import verify_user_owns_resource
+from models.conversation import Conversation
+from models.message import Message
+from models.user_context import User  # Assuming User model exists from Phase II
+from auth.jwt import verify_user_owns_resource
 
 
 class ChatService:

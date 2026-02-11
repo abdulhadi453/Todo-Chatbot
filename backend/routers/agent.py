@@ -3,35 +3,34 @@ Agent API router for the AI assistant integration.
 This module defines the API endpoints for agent functionality.
 """
 
-from typing import Dict, Any, List
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlmodel import Session, select
-from datetime import datetime
-import uuid
+from typing import Dict, Any, List;
+from fastapi import APIRouter, Depends, HTTPException, status;
+from sqlmodel import Session, select;
+from datetime import datetime;
+import uuid;
 
-from backend.database import get_session
-from backend.auth.jwt import get_current_user_id
-from backend.services.openai_agent_service import OpenAIAgentService
-from backend.services.todo_tools import TodoTools
-from backend.models.agent_session import AgentSession
-from backend.models.agent_message import AgentMessage
-from backend.config.agent_config import AgentConfig
+from config.database import get_session
+from src.auth.auth_dependencies import get_user_from_token
+from ..services.openai_agent_service import OpenAIAgentService
+from ..services.todo_tools import TodoTools
+from ..models.agent_session import AgentSession
+from ..models.agent_message import AgentMessage
+from ..config.agent_config import AgentConfig
 import os
 
 router = APIRouter(prefix="/api/{user_id}", tags=["agent"])
-
 
 @router.post("/chat", response_model=Dict[str, Any])
 async def agent_chat(
     user_id: str,
     message_request: Dict[str, Any],
     session: Session = Depends(get_session),
-    current_user_id: str = Depends(get_current_user_id)
+    current_user_id: str = Depends(get_user_from_token)
 ):
     """
     Handle chat interactions between user and AI agent.
 
-    This endpoint processes user messages, routes them to the appropriate AI service,
+    t processes user messages, routes them to the appropriate AI service,
     executes any required tools, and returns the agent's response.
 
     Args:
@@ -164,11 +163,11 @@ async def agent_chat(
 @router.get("/conversations", response_model=List[Dict[str, Any]])
 async def get_agent_conversations(
     user_id: str,
-    session: Session = Depends(get_session),
-    current_user_id: str = Depends(get_current_user_id)
+    session: Session = Depends(get_user_from_token),
+    current_user_id: str = Depends(get_user_from_token)
 ):
     """
-    Retrieve all agent conversations for the specified user, ordered by most recent activity.
+    Retrieve all agent conversations for the specified usered by most recent activity.
 
     Args:
         user_id: ID of the authenticated user (from URL path)
@@ -233,11 +232,11 @@ async def get_agent_conversations(
 async def get_agent_conversation(
     user_id: str,
     conversation_id: str,
-    session: Session = Depends(get_session),
-    current_user_id: str = Depends(get_current_user_id)
+    session: Session = Depends(get_user_from_token),
+    current_user_id: str = Depends(get_user_from_token)
 ):
     """
-    Retrieve a specific agent conversation and its message history.
+    Retrieve a specific on and its message history.
 
     Args:
         user_id: ID of the authenticated user (from URL path)
@@ -323,11 +322,11 @@ async def get_agent_conversation(
 async def delete_agent_conversation(
     user_id: str,
     conversation_id: str,
-    session: Session = Depends(get_session),
-    current_user_id: str = Depends(get_current_user_id)
+    session: Session = Depends(get_user_from_token),
+    current_user_id: str = Depends(get_user_from_token)
 ):
     """
-    Delete a specific agent conversation and all its messages.
+    Delete a specific ation and all its messages.
 
     Args:
         user_id: ID of the authenticated user (from URL path)

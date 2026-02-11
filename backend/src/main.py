@@ -4,9 +4,10 @@ import os
 
 # Try relative imports first (when running as a module)
 try:
-    from .api.todo_router import router as todo_router
-    from .api.auth_router import router as auth_router
-    from .config.database import create_db_and_tables
+    from src.api.todo_router import router as todo_router
+    from src.api.auth_router import router as auth_router
+    from config.database import create_db_and_tables
+    from ..routers.agent import router as agent_router  # AI Agent router
 except ImportError:
     # Fall back to absolute imports (when running directly)
     import sys
@@ -16,9 +17,10 @@ except ImportError:
     if parent_dir not in sys.path:
         sys.path.insert(0, parent_dir)
 
-    from api.todo_router import router as todo_router
-    from api.auth_router import router as auth_router
+    from src.api.todo_router import router as todo_router
+    from src.api.auth_router import router as auth_router
     from config.database import create_db_and_tables
+    from routers.agent import router as agent_router  # AI Agent router
 
 # Create FastAPI app with additional metadata for authentication
 app = FastAPI(

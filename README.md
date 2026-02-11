@@ -69,6 +69,9 @@
 
    # Database Configuration (from your Neon PostgreSQL setup)
    DATABASE_URL=postgresql://neondb_owner:your_password@ep-xxxxxx.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require
+
+   # OpenAI API Configuration (for AI agent functionality)
+   OPENAI_API_KEY=your-openai-api-key-here
    ```
 
 5. **Run the backend server**
@@ -109,6 +112,19 @@
 5. **Access the application**
    - Frontend: [http://localhost:3000](http://localhost:3000)
    - Backend API docs: [http://localhost:8000/docs](http://localhost:8000/docs)
+
+### AI Agent Setup (Optional)
+
+To enable the AI assistant functionality:
+
+1. **Obtain an OpenAI API key**
+   - Sign up at [OpenAI](https://platform.openai.com/) and create an API key
+   - Add the API key to your backend `.env` file as shown above
+
+2. **The AI agent is automatically integrated** into the application when the OpenAI API key is configured
+   - The agent is accessible through the chat interface
+   - It can perform natural language processing for todo operations
+   - It supports tool calling for list, add, update, and delete operations
 
 ## 📡 API Endpoints
 
