@@ -10,8 +10,8 @@ import jwt
 from fastapi import HTTPException, Depends, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlmodel import Session, select
-from config.database import get_session
-from models.user_context import User  # Assuming User model exists from Phase II
+from ..config.database import get_session
+from ..src.models.todo_model import User  # User model from Phase II
 
 # Initialize security scheme for API documentation
 security = HTTPBearer()

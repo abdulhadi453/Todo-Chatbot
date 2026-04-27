@@ -3,15 +3,10 @@ AgentSession model for the AI assistant integration.
 Represents a conversation session between a user and the AI agent.
 """
 
-from sqlmodel import SQLModel, Field, Relationship
+from sqlmodel import SQLModel, Field
 from datetime import datetime
 import uuid
-from typing import TYPE_CHECKING, List, Optional
-
-if TYPE_CHECKING:
-    from backend.models.agent_message import AgentMessage  # Forward reference for type checking
-    from backend.models.user import User  # Assuming User model exists from Phase II
-
+from typing import Optional
 
 class AgentSession(SQLModel, table=True):
     """
@@ -20,6 +15,7 @@ class AgentSession(SQLModel, table=True):
     """
 
     __tablename__ = "agent_sessions"
+    __table_args__ = {"extend_existing": True}
 
     # Primary key
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
@@ -31,15 +27,6 @@ class AgentSession(SQLModel, table=True):
     title: Optional[str] = Field(default=None, max_length=200)  # Auto-generated or user-provided title
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
-
-    # Relationship with messages in this session
-    messages: List["AgentMessage"] = Relationship(
-        back_populates="session",
-        sa_relationship_kwargs={"lazy": "selectin", "cascade": "all, delete-orphan"}
-    )
-
-    # Relationship with user (optional if User model exists)
-    # user: Optional["User"] = Relationship(back_populates="agent_sessions")
 
 
     def __repr__(self):

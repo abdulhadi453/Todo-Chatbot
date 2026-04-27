@@ -7,10 +7,7 @@ from sqlmodel import SQLModel, Field, Relationship
 from datetime import datetime
 import uuid
 from typing import TYPE_CHECKING, Optional, Dict, Any
-
-if TYPE_CHECKING:
-    from backend.models.user import User  # Assuming User model exists from Phase II
-
+from sqlalchemy import JSON
 
 class UserContext(SQLModel, table=True):
     """
@@ -19,6 +16,7 @@ class UserContext(SQLModel, table=True):
     """
 
     __tablename__ = "user_contexts"
+    __table_args__ = {"extend_existing": True}
 
     # Primary key - using user_id as primary key since each user has exactly one context
     user_id: uuid.UUID = Field(foreign_key="users.id", primary_key=True)
@@ -31,13 +29,13 @@ class UserContext(SQLModel, table=True):
 
     # AI interaction preferences
     preferred_temperature: float = Field(default=0.7)  # Temperature setting for AI responses (0.0 to 1.0)
-    response_length_preference: str = Field(default="medium", sa_column_kwargs={"check": "response_length_preference IN ('short', 'medium', 'long')"})  # Preferred response length
+    response_length_preference: str = Field(default="medium")  # Preferred response length
     ai_personality_preference: Optional[str] = Field(default=None, max_length=100)  # Personality traits the user prefers
 
     # Context information
     user_profile_summary: Optional[str] = Field(default=None, max_length=500)  # Summary of user's work/interests
-    frequent_topics: Optional[list[str]] = Field(default=[], sa_column='JSON')  # Topics the user frequently asks about
-    context_notes: Optional[Dict[str, Any]] = Field(default=None, sa_column='JSON')  # Additional context notes for AI
+    frequent_topics: Optional[list] = Field(default=[], sa_type=JSON)  # Topics the user frequently asks about
+    context_notes: Optional[dict] = Field(default=None, sa_type=JSON)  # Additional context notes for AI
 
     # Usage statistics
     total_interactions: int = Field(default=0)  # Total number of AI interactions

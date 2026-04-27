@@ -6,7 +6,7 @@ This service follows the single responsibility principle and provides clear task
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 from sqlmodel import Session, select
-from backend.models.task import Task  # Assuming a Task model exists
+from backend.src.models.todo_model import TodoTask as Task  # Using the Task model from Phase II
 from backend.core.dependency_injection import register_service, Injectable
 from backend.utils.validator_utils import validate_required_fields
 from backend.utils.error_utils import ValidationError, NotFoundError, ServiceError

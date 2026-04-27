@@ -1,0 +1,12 @@
+C:\Users\ICTech\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlmodel\main.py:757: SAWarning: Can't validate argument 'max_length'; can't locate any SQLAlchemy dialect named 'max'
+  return Column(sa_type, *args, **kwargs)  # type: ignore
+INFO:httpx:HTTP Request: POST http://testserver/auth/login "HTTP/1.1 401 Unauthorized"
+INFO:httpx:HTTP Request: POST http://testserver/auth/register "HTTP/1.1 201 Created"
+Loading app...
+App loaded!
+Testing login endpoint...
+Status: 401
+Response: {"detail":"Incorrect email or password"}
+Testing register endpoint...
+Status: 201
+Response: {"user_id":"33b60e70-157a-4db7-8384-da8a4996224d","email":"newuser@example.com","name":"Test User","access_token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzM2I2MGU3MC0xNTdhLTRkYjctODM4NC1kYThhNDk5NjIyNGQiLCJlbWFpbCI6Im5ld3VzZXJAZXhhbXBsZS5jb20iLCJleHAiOjE3NzIwMDcxMTJ9.8ZL59lmkASyj9VJCqTeUrwppuIrN6VVlCHVLHNl7MUI","refresh_token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzM2I2MGU3MC0xNTdhLTRkYjctODM4NC1kYThhNDk5NjIyNGQiLCJlbWFpbCI6Im5ld3VzZXJAZXhhbXBsZS5jb20iLCJleHAiOjE3NzI2MTAxMTJ9.O-TgfUK0_htIPBnuJHTq0lJu3lDtzm5wzC8ErbwHgpE","token_type":"bearer"}

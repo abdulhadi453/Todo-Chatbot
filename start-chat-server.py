@@ -113,21 +113,33 @@ def main():
         print("💬 Chat Endpoint: http://localhost:8000/api/{user_id}/chat")
         print("\nPress Ctrl+C to stop the server")
 
-        # Run the server
-        import uvicorn
-        uvicorn.run(
-            app,
-            host="0.0.0.0",
-            port=8000,
-            reload=False  # Set to True in development
-        )
+        # Start the server using subprocess.Popen
+        uvicorn_process = subprocess.Popen([
+            sys.executable, "-m", "uvicorn",
+            "start-chat-server:create_app",  # Target the create_app function in this script
+            "--host", "0.0.0.0",
+            "--port", "8000",
+            "--factory", # Use --factory for create_app
+        ])
+        print(f"Uvicorn server started with PID: {uvicorn_process.pid}")
+
+        # Store the process ID globally so it can be terminated later by the agent
+        # Or, the agent will handle its termination explicitly.
+        # Removed uvicorn_process.wait() to prevent blocking the agent.
 
     except KeyboardInterrupt:
         print("\n\n🛑 Shutting down gracefully...")
+        # Check if uvicorn_process was successfully started and is still running
+        if 'uvicorn_process' in locals() and uvicorn_process.poll() is None:
+            uvicorn_process.terminate()
+            uvicorn_process.wait()
+            print("Uvicorn server terminated.")
         sys.exit(0)
     except Exception as e:
         print(f"\n❌ Error starting application: {e}")
         sys.exit(1)
+
+    return uvicorn_process # Return the process object for the agent to manage
 
 if __name__ == "__main__":
     main()

@@ -1,0 +1,3 @@
+C:\Users\ICTech\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlmodel\main.py:757: SAWarning: Can't validate argument 'max_length'; can't locate any SQLAlchemy dialect named 'max'
+  return Column(sa_type, *args, **kwargs)  # type: ignore
+App loaded

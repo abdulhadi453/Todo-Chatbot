@@ -8,11 +8,12 @@ from sqlmodel import Session, select
 from datetime import datetime
 import uuid
 
-from backend.handlers.task_handler import Task  # Assuming the task model exists from Phase II
+from backend.src.models.todo_model import TodoTask as Task  # Using the Task model from Phase II
 from backend.models.agent_tool import AgentTool
 from backend.models.tool_execution_log import ToolExecutionLog
 from backend.models.user_context import UserContext  # Import UserContext for validation
-from backend.exceptions.chat_exceptions import UnauthorizedAccessException, ValidationError
+from backend.exceptions.chat_exceptions import UnauthorizedAccessException
+from backend.utils.error_utils import ValidationError
 
 
 class TodoTools:

@@ -43,17 +43,14 @@ def create_db_and_tables():
     """Create database tables"""
     import sys
     import os
-    # Add the src directory to the Python path
-    current_dir = os.path.dirname(__file__)
-    parent_dir = os.path.dirname(current_dir)
-    src_dir = os.path.join(parent_dir, 'src')
-
-    # Check if src_dir is already in the path to avoid duplicates
-    if src_dir not in sys.path:
-        sys.path.insert(0, src_dir)
+    # Add the backend directory to the Python path
+    current_dir = os.path.dirname(os.path.dirname(__file__))
+    if current_dir not in sys.path:
+        sys.path.insert(0, current_dir)
 
     # Import models and create tables with extend_existing to handle duplicates
-    from models.todo_model import TodoTask, User
+    # Import User model FIRST (required for foreign key references)
+    from models.user import User
     from sqlmodel import SQLModel
 
     # Import agent models to ensure they're registered with SQLModel
@@ -63,8 +60,16 @@ def create_db_and_tables():
         from models.agent_tool import AgentTool
         from models.tool_execution_log import ToolExecutionLog
         from models.user_context import UserContext
-    except ImportError:
+    except ImportError as e:
         # Agent models may not exist yet in the old structure
+        print(f"Warning: Could not import some agent models: {e}")
+        pass
+
+    # Import todo models from src/models
+    try:
+        from src.models.todo_model import TodoTask
+    except ImportError as e:
+        print(f"Warning: Could not import TodoTask: {e}")
         pass
 
     # Create all tables, potentially dropping and recreating if needed

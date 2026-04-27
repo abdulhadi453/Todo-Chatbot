@@ -11,12 +11,13 @@ from datetime import datetime
 import uuid
 
 from openai import OpenAI, OpenAIError, APITimeoutError, APIConnectionError
-from services.agent_service import AgentService
-from ..services.todo_tools import TodoTools
+from .agent_service import AgentService
+from .todo_tools import TodoTools
 from ..config.agent_config import AgentConfig
 # from ..models.agent_message import AgentMessage
 from ..models.agent_session import AgentSession
-from exceptions.chat_exceptions import UnauthorizedAccessException, ValidationError
+from ..exceptions.chat_exceptions import UnauthorizedAccessException
+from ..utils.error_utils import ValidationError
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

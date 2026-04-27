@@ -3,15 +3,11 @@ AgentMessage model for the AI assistant integration.
 Represents a message within an agent conversation session.
 """
 
-from sqlmodel import SQLModel, Field, Relationship
+from sqlmodel import SQLModel, Field
 from datetime import datetime
 import uuid
-from typing import TYPE_CHECKING, Optional, Dict, Any
-
-if TYPE_CHECKING:
-    from backend.models.agent_session import AgentSession  # Forward reference for type checking
-    from backend.models.user import User  # Assuming User model exists from Phase II
-
+from typing import Optional, Dict, Any
+from sqlalchemy import JSON
 
 class AgentMessage(SQLModel, table=True):
     """
@@ -20,6 +16,7 @@ class AgentMessage(SQLModel, table=True):
     """
 
     __tablename__ = "agent_messages"
+    __table_args__ = {"extend_existing": True}
 
     # Primary key
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
@@ -29,16 +26,13 @@ class AgentMessage(SQLModel, table=True):
     user_id: uuid.UUID = Field(foreign_key="users.id", nullable=False)  # Who sent this message
 
     # Message content and metadata
-    role: str = Field(sa_column_kwargs={"check": "role IN ('user', 'assistant', 'tool')"})  # Who sent the message
+    role: str  # Who sent the message
     content: str = Field(max_length=10000)  # The actual message content
     timestamp: datetime = Field(default_factory=datetime.utcnow)  # When the message was created
 
     # Tool execution information (when role is 'tool')
-    tool_calls: Optional[Dict[str, Any]] = Field(default=None, sa_column='JSON')  # Details of tools called by agent
-    tool_call_results: Optional[Dict[str, Any]] = Field(default=None, sa_column='JSON')  # Results from tool executions
-
-    # Relationships
-    session: "AgentSession" = Relationship(back_populates="messages")
+    tool_calls: Optional[dict] = Field(default=None, sa_type=JSON)  # Details of tools called by agent
+    tool_call_results: Optional[dict] = Field(default=None, sa_type=JSON)  # Results from tool executions
 
     def __repr__(self):
         """

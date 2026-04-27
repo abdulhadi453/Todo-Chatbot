@@ -7,6 +7,7 @@ from sqlmodel import SQLModel, Field, Relationship
 from datetime import datetime
 import uuid
 from typing import TYPE_CHECKING, Optional, Dict, Any
+from sqlalchemy import JSON
 
 if TYPE_CHECKING:
     from backend.models.user import User  # Assuming User model exists from Phase II
@@ -19,6 +20,7 @@ class AgentTool(SQLModel, table=True):
     """
 
     __tablename__ = "agent_tools"
+    __table_args__ = {"extend_existing": True}
 
     # Primary key
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
@@ -26,7 +28,7 @@ class AgentTool(SQLModel, table=True):
     # Tool identification and metadata
     name: str = Field(sa_column_kwargs={"unique": True, "nullable": False, "max_length": 100})  # Unique tool name
     description: str = Field(max_length=500)  # Description of what the tool does
-    schema_def: Optional[Dict[str, Any]] = Field(default=None, sa_column='JSON')  # JSON schema definition for tool parameters
+    schema_def: Optional[Dict[str, Any]] = Field(default=None, sa_type=JSON)  # JSON schema definition for tool parameters
     enabled: bool = Field(default=True)  # Whether the tool is currently available
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)

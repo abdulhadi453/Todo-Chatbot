@@ -2,25 +2,20 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import os
 
-# Try relative imports first (when running as a module)
-try:
-    from src.api.todo_router import router as todo_router
-    from src.api.auth_router import router as auth_router
-    from config.database import create_db_and_tables
-    from ..routers.agent import router as agent_router  # AI Agent router
-except ImportError:
-    # Fall back to absolute imports (when running directly)
-    import sys
-    import os.path
-    current_dir = os.path.dirname(__file__)
-    parent_dir = os.path.dirname(current_dir)
-    if parent_dir not in sys.path:
-        sys.path.insert(0, parent_dir)
+# Add the backend directory to the Python path to allow absolute imports
+import sys
+from pathlib import Path
 
-    from src.api.todo_router import router as todo_router
-    from src.api.auth_router import router as auth_router
-    from config.database import create_db_and_tables
-    from routers.agent import router as agent_router  # AI Agent router
+# Add backend directory to path
+backend_dir = Path(__file__).parent.parent
+if str(backend_dir) not in sys.path:
+    sys.path.insert(0, str(backend_dir))
+
+# Import using absolute paths
+from backend.src.api.todo_router import router as todo_router
+from backend.src.api.auth_router import router as auth_router
+from backend.config.database import create_db_and_tables
+from backend.routers.agent import router as agent_router  # AI Agent router
 
 # Create FastAPI app with additional metadata for authentication
 app = FastAPI(
@@ -55,6 +50,7 @@ async def on_startup():
 # Include routers
 app.include_router(auth_router)  # Authentication endpoints
 app.include_router(todo_router)  # Todo endpoints
+app.include_router(agent_router)  # AI Agent endpoints
 
 @app.get("/")
 def read_root():

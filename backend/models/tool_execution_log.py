@@ -7,6 +7,7 @@ from sqlmodel import SQLModel, Field, Relationship
 from datetime import datetime
 import uuid
 from typing import TYPE_CHECKING, Optional, Dict, Any
+from sqlalchemy import JSON
 
 if TYPE_CHECKING:
     from backend.models.user import User  # Assuming User model exists from Phase II
@@ -20,6 +21,7 @@ class ToolExecutionLog(SQLModel, table=True):
     """
 
     __tablename__ = "tool_execution_logs"
+    __table_args__ = {"extend_existing": True}
 
     # Primary key
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
@@ -31,11 +33,11 @@ class ToolExecutionLog(SQLModel, table=True):
 
     # Execution details
     tool_name: str = Field(max_length=100, nullable=False)  # Name of the tool (denormalized for performance)
-    parameters: Optional[Dict[str, Any]] = Field(default=None, sa_column='JSON')  # Input parameters passed to the tool
-    result: Optional[Dict[str, Any]] = Field(default=None, sa_column='JSON')  # Output from the tool execution
+    parameters: Optional[Dict[str, Any]] = Field(default=None, sa_type=JSON)  # Input parameters passed to the tool
+    result: Optional[Dict[str, Any]] = Field(default=None, sa_type=JSON)  # Output from the tool execution
     error_message: Optional[str] = Field(default=None, max_length=1000)  # Error message if execution failed
     execution_time_ms: Optional[float] = Field(default=None)  # Time taken to execute the tool in milliseconds
-    status: str = Field(sa_column_kwargs={"check": "status IN ('success', 'error', 'cancelled')"})  # Execution status
+    status: str = Field(default="pending")  # Execution status
 
     # Timestamps
     executed_at: datetime = Field(default_factory=datetime.utcnow)

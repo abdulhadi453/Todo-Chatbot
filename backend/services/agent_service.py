@@ -8,11 +8,11 @@ from typing import Dict, Any, Optional, List
 from sqlmodel import Session, select
 from datetime import datetime
 
-from backend.models.agent_session import AgentSession
-from backend.models.agent_message import AgentMessage
-from backend.models.user_context import UserContext
-from backend.exceptions.chat_exceptions import UnauthorizedAccessException
-from backend.services.todo_tools import TodoTools
+from ..models.agent_session import AgentSession
+from ..models.agent_message import AgentMessage
+from ..models.user_context import UserContext
+from ..exceptions.chat_exceptions import UnauthorizedAccessException
+from .todo_tools import TodoTools
 
 
 class AgentService:
@@ -180,7 +180,7 @@ class AgentService:
         Returns:
             UserContext object if found, None otherwise
         """
-        from backend.models.user_context import UserContext  # Import here to avoid circular dependency
+        from ..models.user_context import UserContext  # Import here to avoid circular dependency
 
         statement = select(UserContext).where(UserContext.user_id == user_id)
         user_context = self.session.exec(statement).first()
@@ -211,7 +211,7 @@ class AgentService:
         Returns:
             Updated UserContext object if successful, None otherwise
         """
-        from backend.models.user_context import UserContext  # Import here to avoid circular dependency
+        from ..models.user_context import UserContext  # Import here to avoid circular dependency
 
         user_context = self.get_user_context(user_id)
         if not user_context:
