@@ -23,7 +23,7 @@ class TokenResponse(BaseModel):
     """
     Schema for token response
     """
-    user_id: str
+    id: str
     email: str
     name: Optional[str] = None
     access_token: str
@@ -35,7 +35,7 @@ class UserResponse(BaseModel):
     """
     Schema for user information response
     """
-    user_id: str
+    id: str
     email: str
     name: Optional[str] = None
     created_at: Optional[str] = None

@@ -62,7 +62,7 @@ def register_user(user: UserCreate, session: Session = Depends(get_session)):
     )
 
     return TokenResponse(
-        user_id=db_user.id,
+        id=db_user.id,
         email=db_user.email,
         name=db_user.name,
         access_token=access_token,
@@ -95,7 +95,7 @@ def login_user(user_credentials: UserLogin, session: Session = Depends(get_sessi
     )
 
     return TokenResponse(
-        user_id=user.id,
+        id=user.id,
         email=user.email,
         name=user.name,
         access_token=access_token,
@@ -135,7 +135,7 @@ def get_current_user_info(
         )
 
     return UserResponse(
-        user_id=user.id,
+        id=user.id,
         email=user.email,
         name=user.name,
         created_at=user.created_at.isoformat() if user.created_at else None

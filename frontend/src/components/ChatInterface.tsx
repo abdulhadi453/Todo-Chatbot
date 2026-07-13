@@ -9,6 +9,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/context/auth-context';
+import { useTaskRefresh } from '@/context/task-refresh-context';
 import { MessageHistory } from './MessageHistory';
 import { MessageInput } from './MessageInput';
 import { StreamingMessage, StreamingStyles } from './StreamingHandler';
@@ -26,6 +27,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   onConversationChange,
 }) => {
   const { user } = useAuth();
+  const { triggerRefresh } = useTaskRefresh();
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(
     initialConversationId || null
@@ -66,12 +68,29 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       setMessages((prev) => [...prev, aiMessage]);
       resetStream();
 
+      // Check if the response includes tool execution results
+      // If any CRUD tools were called, trigger a task list refresh
+      if (response.tool_calls && Array.isArray(response.tool_calls)) {
+        const crudTools = ['add_todo', 'update_todo', 'delete_todo', 'create_reminder'];
+        const hasCrudOperation = response.tool_calls.some((toolCall: any) =>
+          crudTools.includes(toolCall.name)
+        );
+
+        if (hasCrudOperation) {
+          console.log('AI agent executed CRUD operation, refreshing task list...');
+          // Small delay to ensure backend has committed the transaction
+          setTimeout(() => {
+            triggerRefresh();
+          }, 500);
+        }
+      }
+
       if (response.conversation_id && response.conversation_id !== currentConversationId) {
         setCurrentConversationId(response.conversation_id);
         onConversationChange?.(response.conversation_id);
       }
     },
-    [currentConversationId, onConversationChange, resetStream]
+    [currentConversationId, onConversationChange, resetStream, triggerRefresh]
   );
 
   const handleSendMessage = useCallback(

@@ -5,7 +5,6 @@ Represents a conversation session between a user and the AI agent.
 
 from sqlmodel import SQLModel, Field
 from datetime import datetime
-import uuid
 from typing import Optional
 
 class AgentSession(SQLModel, table=True):
@@ -17,16 +16,16 @@ class AgentSession(SQLModel, table=True):
     __tablename__ = "agent_sessions"
     __table_args__ = {"extend_existing": True}
 
-    # Primary key
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    # Primary key - using string to match User.id type
+    id: Optional[str] = Field(default=None, primary_key=True)
 
-    # Foreign key to user (maintaining user isolation)
-    user_id: uuid.UUID = Field(foreign_key="users.id", nullable=False)
+    # Foreign key to user (maintaining user isolation) - using string to match User.id
+    user_id: str = Field(foreign_key="users.id", nullable=False)
 
     # Session metadata
     title: Optional[str] = Field(default=None, max_length=200)  # Auto-generated or user-provided title
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: Optional[datetime] = Field(default=None)
+    updated_at: Optional[datetime] = Field(default=None)
 
 
     def __repr__(self):
@@ -40,7 +39,7 @@ class AgentSession(SQLModel, table=True):
 
     def dict(self, **kwargs):
         """
-        Override dict method to properly serialize UUIDs and datetime objects.
+        Override dict method to properly serialize datetime objects.
 
         Args:
             **kwargs: Additional options for serialization
@@ -50,13 +49,11 @@ class AgentSession(SQLModel, table=True):
         """
         d = super().dict(**kwargs)
 
-        # Convert UUID to string for serialization
-        d["id"] = str(d["id"])
-        d["user_id"] = str(d["user_id"])
-
         # Convert datetime to ISO format string
-        d["created_at"] = self.created_at.isoformat()
-        d["updated_at"] = self.updated_at.isoformat()
+        if self.created_at:
+            d["created_at"] = self.created_at.isoformat()
+        if self.updated_at:
+            d["updated_at"] = self.updated_at.isoformat()
 
         # Remove the related objects to prevent circular references unless explicitly requested
         if "include_relationships" not in kwargs or not kwargs["include_relationships"]:

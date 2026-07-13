@@ -28,7 +28,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (token) {
         try {
           const response = await apiClient.getMe();
-          setUser(response.data);
+          // Backend returns flat structure with id, email, name
+          const userData: User = {
+            id: response.data.id,
+            email: response.data.email,
+            name: response.data.name,
+          };
+          setUser(userData);
           setIsAuthenticated(true);
         } catch (error: unknown) {
           // Token might be expired, clear it
@@ -52,8 +58,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       localStorage.setItem('access_token', response.data.access_token);
       localStorage.setItem('refresh_token', response.data.refresh_token);
 
-      // Set user data
-      setUser(response.data.user);
+      // Set user data - backend returns flat structure with id, email, name
+      const userData: User = {
+        id: response.data.id,
+        email: response.data.email,
+        name: response.data.name,
+      };
+      setUser(userData);
       setIsAuthenticated(true);
     } catch (error) {
       throw error;
@@ -68,8 +79,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       localStorage.setItem('access_token', response.data.access_token);
       localStorage.setItem('refresh_token', response.data.refresh_token);
 
-      // Set user data
-      setUser(response.data.user);
+      // Set user data - backend returns flat structure with id, email, name
+      const userData: User = {
+        id: response.data.id,
+        email: response.data.email,
+        name: response.data.name,
+      };
+      setUser(userData);
       setIsAuthenticated(true);
     } catch (error) {
       throw error;

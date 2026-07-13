@@ -6,6 +6,7 @@ import { apiClient } from '../../services/api-client';
 import TaskItem from './task-item';
 import { Card } from '../ui/card';
 import { Loader2, Calendar, Flag, Hash } from 'lucide-react';
+import { useTaskRefresh } from '../../context/task-refresh-context';
 
 interface TaskListProps {
   onTaskUpdate?: (task: TodoTask) => void;
@@ -20,10 +21,18 @@ const TaskList = ({ onTaskUpdate, onTaskDelete, onTaskCreated }: TaskListProps) 
   const [filter, setFilter] = useState<'all' | 'active' | 'completed'>('all');
   const [sortBy, setSortBy] = useState<'date' | 'priority' | 'title'>('date');
   const overdueTasks = tasks.filter(t => t.dueDate && new Date(t.dueDate) < new Date() && !t.completed).length;
+  const { refreshKey } = useTaskRefresh();
 
   useEffect(() => {
     fetchTasks();
   }, []);
+
+  // Refresh tasks when refreshKey changes (triggered by AI agent CRUD operations)
+  useEffect(() => {
+    if (refreshKey > 0) {
+      fetchTasks();
+    }
+  }, [refreshKey]);
 
   // Refetch tasks when a new task is created (via parent callback)
   useEffect(() => {

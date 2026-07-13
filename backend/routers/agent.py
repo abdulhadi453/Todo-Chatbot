@@ -50,15 +50,6 @@ async def agent_chat(
         )
 
     try:
-        # Validate user_id format
-        try:
-            user_uuid = uuid.UUID(user_id)
-        except ValueError:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid user ID format"
-            )
-
         # Extract required parameters
         message_text = message_request.get("message")
         conversation_id_str = message_request.get("conversation_id")
@@ -116,12 +107,9 @@ async def agent_chat(
 
             # Create or use existing session
             if conversation_id_str:
-                try:
-                    conversation_id = uuid.UUID(conversation_id_str)
-                except ValueError:
-                    conversation_id = uuid.uuid4()
+                conversation_id = conversation_id_str
             else:
-                conversation_id = uuid.uuid4()
+                conversation_id = str(uuid.uuid4())
 
             # Store messages using fallback
             agent_service = openai_agent_service
@@ -177,6 +165,9 @@ async def get_agent_conversations(
     Returns:
         List of conversation details with id, title, timestamps, and message count
     """
+    import logging
+    logger = logging.getLogger(__name__)
+
     # Verify that the user_id in the URL matches the authenticated user
     if user_id != current_user_id:
         raise HTTPException(
@@ -185,21 +176,13 @@ async def get_agent_conversations(
         )
 
     try:
-        # Validate user_id format
-        try:
-            user_uuid = uuid.UUID(user_id)
-        except ValueError:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid user ID format"
-            )
-
         # Initialize OpenAI agent service
         use_stub = os.getenv("USE_STUB_AGENT", "false").lower() == "true"
         openai_agent_service = OpenAIAgentService(session, use_stub=use_stub)
 
         # Get user's conversations
-        conversations = openai_agent_service.get_user_conversations(user_uuid)
+        conversations = openai_agent_service.get_user_conversations(user_id)
+        logger.info(f"Found {len(conversations)} conversations")
 
         # Prepare response data
         result = []
@@ -217,11 +200,13 @@ async def get_agent_conversations(
                 "message_count": message_count
             })
 
+        logger.info(f"Returning {len(result)} conversation records")
         return result
 
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Error in get_agent_conversations: {type(e).__name__}: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"An unexpected error occurred: {str(e)}"
@@ -255,30 +240,12 @@ async def get_agent_conversation(
         )
 
     try:
-        # Validate user_id format
-        try:
-            user_uuid = uuid.UUID(user_id)
-        except ValueError:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid user ID format"
-            )
-
-        # Validate conversation_id format
-        try:
-            conv_uuid = uuid.UUID(conversation_id)
-        except ValueError:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid conversation ID format"
-            )
-
         # Initialize OpenAI agent service
         use_stub = os.getenv("USE_STUB_AGENT", "false").lower() == "true"
         openai_agent_service = OpenAIAgentService(session, use_stub=use_stub)
 
         # Get the conversation
-        conversation = openai_agent_service.get_agent_session(conv_uuid, user_uuid)
+        conversation = openai_agent_service.get_agent_session(conversation_id, user_id)
         if not conversation:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -286,7 +253,7 @@ async def get_agent_conversation(
             )
 
         # Get messages for the conversation
-        messages = openai_agent_service.get_session_messages(conv_uuid, user_uuid)
+        messages = openai_agent_service.get_session_messages(conversation_id, user_id)
 
         # Prepare response
         conversation_data = {
@@ -345,30 +312,12 @@ async def delete_agent_conversation(
         )
 
     try:
-        # Validate user_id format
-        try:
-            user_uuid = uuid.UUID(user_id)
-        except ValueError:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid user ID format"
-            )
-
-        # Validate conversation_id format
-        try:
-            conv_uuid = uuid.UUID(conversation_id)
-        except ValueError:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid conversation ID format"
-            )
-
         # Initialize OpenAI agent service
         use_stub = os.getenv("USE_STUB_AGENT", "false").lower() == "true"
         openai_agent_service = OpenAIAgentService(session, use_stub=use_stub)
 
         # Delete the conversation
-        success = openai_agent_service.delete_conversation(conv_uuid, user_uuid)
+        success = openai_agent_service.delete_conversation(conversation_id, user_id)
 
         if not success:
             raise HTTPException(

@@ -5,7 +5,6 @@ Stores user-specific information and preferences for AI interactions.
 
 from sqlmodel import SQLModel, Field, Relationship
 from datetime import datetime
-import uuid
 from typing import TYPE_CHECKING, Optional, Dict, Any
 from sqlalchemy import JSON
 
@@ -18,8 +17,8 @@ class UserContext(SQLModel, table=True):
     __tablename__ = "user_contexts"
     __table_args__ = {"extend_existing": True}
 
-    # Primary key - using user_id as primary key since each user has exactly one context
-    user_id: uuid.UUID = Field(foreign_key="users.id", primary_key=True)
+    # Primary key - using string to match User.id type
+    user_id: str = Field(foreign_key="users.id", primary_key=True)
 
     # Personalization information
     preferred_name: Optional[str] = Field(default=None, max_length=100)  # Preferred name for addressing the user
@@ -54,7 +53,7 @@ class UserContext(SQLModel, table=True):
 
     def dict(self, **kwargs):
         """
-        Override dict method to properly serialize UUIDs and datetime objects.
+        Override dict method to properly serialize datetime objects.
 
         Args:
             **kwargs: Additional options for serialization
@@ -63,9 +62,6 @@ class UserContext(SQLModel, table=True):
             Dictionary representation of the UserContext
         """
         d = super().dict(**kwargs)
-
-        # Convert UUID to string for serialization
-        d["user_id"] = str(d["user_id"])
 
         # Convert datetime to ISO format string
         if d.get("created_at"):
@@ -78,7 +74,7 @@ class UserContext(SQLModel, table=True):
         return d
 
     @classmethod
-    def create_default_context(cls, user_id: uuid.UUID) -> "UserContext":
+    def create_default_context(cls, user_id: str) -> "UserContext":
         """
         Create a default user context for a new user.
 

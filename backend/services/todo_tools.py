@@ -128,6 +128,7 @@ class TodoTools:
 
             # Create a new task
             task = Task(
+                id=str(uuid.uuid4()),  # Generate UUID for the task
                 user_id=user_id,
                 title=sanitized_title.strip(),
                 description=sanitized_description.strip() if sanitized_description else None,
@@ -191,14 +192,11 @@ class TodoTools:
             sanitized_due_date = self._sanitize_input(due_date) if due_date is not None else None
             sanitized_priority = self._sanitize_input(priority) if priority is not None else None
 
-            # Convert todo_id to UUID if it's a string
-            try:
-                todo_uuid = uuid.UUID(todo_id)
-            except ValueError:
-                raise ValidationError(f"Invalid todo ID: {todo_id}")
+            # Keep todo_id as string - database column is VARCHAR, not UUID type
+            # No need to convert to UUID as it causes type mismatch in PostgreSQL
 
             # Get the existing task
-            statement = select(Task).where(Task.id == todo_uuid, Task.user_id == user_id)
+            statement = select(Task).where(Task.id == todo_id, Task.user_id == user_id)
             task = self.session.exec(statement).first()
 
             if not task:
@@ -284,11 +282,14 @@ class TodoTools:
                     "priority": task.priority
                 })
             }
-        except ValidationError:
+        except ValidationError as e:
+            self.session.rollback()  # Rollback on validation error
             raise  # Re-raise validation errors
-        except UnauthorizedAccessException:
+        except UnauthorizedAccessException as e:
+            self.session.rollback()  # Rollback on authorization error
             raise  # Re-raise authorization errors
         except Exception as e:
+            self.session.rollback()  # Rollback on any error
             raise Exception(f"Error updating todo: {str(e)}")
 
     def _analyze_context_changes(self, original: Dict, updated: Dict) -> List[str]:
@@ -419,14 +420,11 @@ class TodoTools:
             True if user owns the todo, False otherwise
         """
         try:
-            # Convert todo_id to UUID if it's a string
-            try:
-                todo_uuid = uuid.UUID(todo_id)
-            except ValueError:
-                raise ValidationError(f"Invalid todo ID: {todo_id}")
+            # Keep todo_id as string - database column is VARCHAR, not UUID type
+            # Don't convert to UUID as it causes type mismatch in PostgreSQL
 
             # Check if the todo exists and belongs to the user
-            statement = select(Task).where(Task.id == todo_uuid, Task.user_id == user_id)
+            statement = select(Task).where(Task.id == todo_id, Task.user_id == user_id)
             task = self.session.exec(statement).first()
 
             return task is not None
@@ -453,14 +451,11 @@ class TodoTools:
             if not self._validate_user_ownership(todo_id, user_id):
                 raise UnauthorizedAccessException(f"Todo with ID {todo_id} not found or access denied")
 
-            # Convert todo_id to UUID if it's a string
-            try:
-                todo_uuid = uuid.UUID(todo_id)
-            except ValueError:
-                raise ValidationError(f"Invalid todo ID: {todo_id}")
+            # Keep todo_id as string - database column is VARCHAR, not UUID type
+            # No need to convert to UUID as it causes type mismatch in PostgreSQL
 
             # Get the existing task
-            statement = select(Task).where(Task.id == todo_uuid, Task.user_id == user_id)
+            statement = select(Task).where(Task.id == todo_id, Task.user_id == user_id)
             task = self.session.exec(statement).first()
 
             if not task:
@@ -474,11 +469,14 @@ class TodoTools:
                 "success": True,
                 "message": f"Todo {todo_id} deleted successfully"
             }
-        except ValidationError:
+        except ValidationError as e:
+            self.session.rollback()  # Rollback on validation error
             raise  # Re-raise validation errors
-        except UnauthorizedAccessException:
+        except UnauthorizedAccessException as e:
+            self.session.rollback()  # Rollback on authorization error
             raise  # Re-raise authorization errors
         except Exception as e:
+            self.session.rollback()  # Rollback on any error
             raise Exception(f"Error deleting todo: {str(e)}")
 
     def add_note_attachment(self, user_id: str, todo_id: str, note_title: str, note_content: str) -> Dict[str, Any]:

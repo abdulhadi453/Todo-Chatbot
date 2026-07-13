@@ -20,6 +20,7 @@ class UserBase(SQLModel):
 
 class User(UserBase, table=True):
     """SQLModel for User entity with authentication fields"""
+    __tablename__ = "users"
     __table_args__ = {'extend_existing': True}
 
     id: Optional[str] = Field(default=None, primary_key=True, nullable=False)  # Using string ID to match requirements
@@ -75,10 +76,30 @@ class TodoTaskRead(SQLModel):
     completed: bool
     category: Optional[str] = None
     priority: Optional[str] = None
-    due_date: Optional[str]  # Return string for API
-    user_id: str  # Include user_id when reading
-    created_at: datetime
-    updated_at: datetime
+    dueDate: Optional[str] = None  # camelCase for frontend
+    userId: str = Field(alias="user_id")  # camelCase for frontend
+    createdAt: str = Field(alias="created_at")  # camelCase for frontend
+    updatedAt: str = Field(alias="updated_at")  # camelCase for frontend
+
+    class Config:
+        from_attributes = True
+        populate_by_name = True  # Allow both camelCase and snake_case
+
+    @classmethod
+    def from_task(cls, task: "TodoTask") -> "TodoTaskRead":
+        """Convert TodoTask ORM object to TodoTaskRead schema"""
+        return cls(
+            id=task.id,
+            title=task.title,
+            description=task.description,
+            completed=task.completed,
+            category=task.category,
+            priority=task.priority,
+            dueDate=task.due_date.isoformat() if task.due_date else None,
+            userId=task.user_id,
+            createdAt=task.created_at.isoformat() if task.created_at else "",
+            updatedAt=task.updated_at.isoformat() if task.updated_at else ""
+        )
 
 class TodoTaskUpdate(BaseModel):
     """Schema for updating a todo task"""
@@ -110,7 +131,7 @@ class UserLogin(BaseModel):
 
 class TokenResponse(BaseModel):
     """Schema for token response"""
-    user_id: str
+    id: str
     email: str
     name: Optional[str] = None
     access_token: str
@@ -120,7 +141,7 @@ class TokenResponse(BaseModel):
 
 class UserResponse(BaseModel):
     """Schema for user response"""
-    user_id: str
+    id: str
     email: str
     name: Optional[str] = None
     created_at: Optional[str] = None

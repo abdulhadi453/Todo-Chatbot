@@ -7,18 +7,18 @@ from datetime import datetime, timedelta
 from typing import Optional
 import os
 import jwt
+from jwt.exceptions import InvalidTokenError, ExpiredSignatureError
 from fastapi import HTTPException, Depends, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlmodel import Session, select
 from ..config.database import get_session
+from ..config.auth import SECRET_KEY, ALGORITHM  # Import from config/auth.py
 from ..src.models.todo_model import User  # User model from Phase II
 
 # Initialize security scheme for API documentation
 security = HTTPBearer()
 
-# Get secret key from environment variable
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "fallback-secret-key-for-development")
-ALGORITHM = "HS256"
+# Use the same configuration as the main auth system
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 
@@ -43,13 +43,13 @@ def verify_token(token: str) -> dict:
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         return payload
-    except jwt.ExpiredSignatureError:
+    except ExpiredSignatureError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token has expired",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    except jwt.JWTError:
+    except InvalidTokenError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
@@ -125,7 +125,8 @@ def get_user_id_from_token(credentials: HTTPAuthorizationCredentials = Depends(s
     """
     token = credentials.credentials
     payload = verify_token(token)
-    user_id = payload.get("user_id")
+    # Check both 'sub' (standard JWT claim) and 'user_id' for backwards compatibility
+    user_id = payload.get("sub") or payload.get("user_id")
 
     if user_id is None:
         raise HTTPException(

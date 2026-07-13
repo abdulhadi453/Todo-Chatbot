@@ -5,7 +5,6 @@ Represents a message within an agent conversation session.
 
 from sqlmodel import SQLModel, Field
 from datetime import datetime
-import uuid
 from typing import Optional, Dict, Any
 from sqlalchemy import JSON
 
@@ -18,17 +17,17 @@ class AgentMessage(SQLModel, table=True):
     __tablename__ = "agent_messages"
     __table_args__ = {"extend_existing": True}
 
-    # Primary key
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    # Primary key - using string to match other models
+    id: Optional[str] = Field(default=None, primary_key=True)
 
-    # Foreign keys
-    session_id: uuid.UUID = Field(foreign_key="agent_sessions.id", nullable=False)  # Link to conversation session
-    user_id: uuid.UUID = Field(foreign_key="users.id", nullable=False)  # Who sent this message
+    # Foreign keys - using string to match User.id and AgentSession.id
+    session_id: str = Field(foreign_key="agent_sessions.id", nullable=False)  # Link to conversation session
+    user_id: str = Field(foreign_key="users.id", nullable=False)  # Who sent this message
 
     # Message content and metadata
     role: str  # Who sent the message
     content: str = Field(max_length=10000)  # The actual message content
-    timestamp: datetime = Field(default_factory=datetime.utcnow)  # When the message was created
+    timestamp: Optional[datetime] = Field(default=None)  # When the message was created
 
     # Tool execution information (when role is 'tool')
     tool_calls: Optional[dict] = Field(default=None, sa_type=JSON)  # Details of tools called by agent
@@ -45,7 +44,7 @@ class AgentMessage(SQLModel, table=True):
 
     def dict(self, **kwargs):
         """
-        Override dict method to properly serialize UUIDs and datetime objects.
+        Override dict method to properly serialize datetime objects.
 
         Args:
             **kwargs: Additional options for serialization
@@ -55,13 +54,9 @@ class AgentMessage(SQLModel, table=True):
         """
         d = super().dict(**kwargs)
 
-        # Convert UUID to string for serialization
-        d["id"] = str(d["id"])
-        d["session_id"] = str(d["session_id"])
-        d["user_id"] = str(d["user_id"])
-
         # Convert datetime to ISO format string
-        d["timestamp"] = self.timestamp.isoformat()
+        if self.timestamp:
+            d["timestamp"] = self.timestamp.isoformat()
 
         # Handle potential None values for optional fields
         if d.get("tool_calls") is None:
@@ -102,7 +97,7 @@ class AgentMessage(SQLModel, table=True):
         return self.role == "tool"
 
     @classmethod
-    def create_user_message(cls, session_id: uuid.UUID, user_id: uuid.UUID, content: str) -> "AgentMessage":
+    def create_user_message(cls, session_id: str, user_id: str, content: str) -> "AgentMessage":
         """
         Create a new user message.
 
@@ -122,7 +117,7 @@ class AgentMessage(SQLModel, table=True):
         )
 
     @classmethod
-    def create_assistant_message(cls, session_id: uuid.UUID, user_id: uuid.UUID, content: str) -> "AgentMessage":
+    def create_assistant_message(cls, session_id: str, user_id: str, content: str) -> "AgentMessage":
         """
         Create a new assistant message.
 
@@ -144,8 +139,8 @@ class AgentMessage(SQLModel, table=True):
     @classmethod
     def create_tool_message(
         cls,
-        session_id: uuid.UUID,
-        user_id: uuid.UUID,
+        session_id: str,
+        user_id: str,
         tool_calls: Optional[Dict[str, Any]] = None,
         tool_results: Optional[Dict[str, Any]] = None
     ) -> "AgentMessage":

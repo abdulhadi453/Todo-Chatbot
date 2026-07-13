@@ -5,7 +5,6 @@ Represents tools available to the AI agent for performing operations.
 
 from sqlmodel import SQLModel, Field, Relationship
 from datetime import datetime
-import uuid
 from typing import TYPE_CHECKING, Optional, Dict, Any
 from sqlalchemy import JSON
 
@@ -22,20 +21,20 @@ class AgentTool(SQLModel, table=True):
     __tablename__ = "agent_tools"
     __table_args__ = {"extend_existing": True}
 
-    # Primary key
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    # Primary key - using string to match other models
+    id: Optional[str] = Field(default=None, primary_key=True)
 
     # Tool identification and metadata
     name: str = Field(sa_column_kwargs={"unique": True, "nullable": False, "max_length": 100})  # Unique tool name
     description: str = Field(max_length=500)  # Description of what the tool does
     schema_def: Optional[Dict[str, Any]] = Field(default=None, sa_type=JSON)  # JSON schema definition for tool parameters
     enabled: bool = Field(default=True)  # Whether the tool is currently available
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: Optional[datetime] = Field(default=None)
+    updated_at: Optional[datetime] = Field(default=None)
 
     # Relationship to user (who can access/use this tool - for user-specific tools)
     # Note: This could be null for system-wide tools
-    user_id: Optional[uuid.UUID] = Field(default=None, foreign_key="users.id")
+    user_id: Optional[str] = Field(default=None, foreign_key="users.id")
 
     def __repr__(self):
         """
@@ -48,7 +47,7 @@ class AgentTool(SQLModel, table=True):
 
     def dict(self, **kwargs):
         """
-        Override dict method to properly serialize UUIDs and datetime objects.
+        Override dict method to properly serialize datetime objects.
 
         Args:
             **kwargs: Additional options for serialization
@@ -58,14 +57,11 @@ class AgentTool(SQLModel, table=True):
         """
         d = super().dict(**kwargs)
 
-        # Convert UUID to string for serialization
-        d["id"] = str(d["id"])
-        if d.get("user_id"):
-            d["user_id"] = str(d["user_id"])
-
         # Convert datetime to ISO format string
-        d["created_at"] = self.created_at.isoformat()
-        d["updated_at"] = self.updated_at.isoformat()
+        if self.created_at:
+            d["created_at"] = self.created_at.isoformat()
+        if self.updated_at:
+            d["updated_at"] = self.updated_at.isoformat()
 
         return d
 

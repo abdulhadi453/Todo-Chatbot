@@ -5,7 +5,6 @@ Tracks all tool executions for monitoring, debugging, and security purposes.
 
 from sqlmodel import SQLModel, Field, Relationship
 from datetime import datetime
-import uuid
 from typing import TYPE_CHECKING, Optional, Dict, Any
 from sqlalchemy import JSON
 
@@ -23,13 +22,13 @@ class ToolExecutionLog(SQLModel, table=True):
     __tablename__ = "tool_execution_logs"
     __table_args__ = {"extend_existing": True}
 
-    # Primary key
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    # Primary key - using string to match other models
+    id: Optional[str] = Field(default=None, primary_key=True)
 
-    # Foreign keys for tracking execution context
-    user_id: uuid.UUID = Field(foreign_key="users.id", nullable=False)  # User who initiated the tool call
-    session_id: Optional[uuid.UUID] = Field(default=None, foreign_key="agent_sessions.id")  # Session where tool was called
-    tool_id: uuid.UUID = Field(foreign_key="agent_tools.id", nullable=False)  # Tool that was executed
+    # Foreign keys for tracking execution context - using string to match other models
+    user_id: str = Field(foreign_key="users.id", nullable=False)  # User who initiated the tool call
+    session_id: Optional[str] = Field(default=None, foreign_key="agent_sessions.id")  # Session where tool was called
+    tool_id: str = Field(foreign_key="agent_tools.id", nullable=False)  # Tool that was executed
 
     # Execution details
     tool_name: str = Field(max_length=100, nullable=False)  # Name of the tool (denormalized for performance)
@@ -40,7 +39,7 @@ class ToolExecutionLog(SQLModel, table=True):
     status: str = Field(default="pending")  # Execution status
 
     # Timestamps
-    executed_at: datetime = Field(default_factory=datetime.utcnow)
+    executed_at: Optional[datetime] = Field(default=None)
 
     def __repr__(self):
         """
@@ -53,7 +52,7 @@ class ToolExecutionLog(SQLModel, table=True):
 
     def dict(self, **kwargs):
         """
-        Override dict method to properly serialize UUIDs and datetime objects.
+        Override dict method to properly serialize datetime objects.
 
         Args:
             **kwargs: Additional options for serialization
@@ -63,29 +62,23 @@ class ToolExecutionLog(SQLModel, table=True):
         """
         d = super().dict(**kwargs)
 
-        # Convert UUIDs to string for serialization
-        d["id"] = str(d["id"])
-        d["user_id"] = str(d["user_id"])
-        if d.get("session_id"):
-            d["session_id"] = str(d["session_id"])
-        d["tool_id"] = str(d["tool_id"])
-
         # Convert datetime to ISO format string
-        d["executed_at"] = self.executed_at.isoformat()
+        if self.executed_at:
+            d["executed_at"] = self.executed_at.isoformat()
 
         return d
 
     @classmethod
     def create_log(
         cls,
-        user_id: uuid.UUID,
-        tool_id: uuid.UUID,
+        user_id: str,
+        tool_id: str,
         tool_name: str,
         parameters: Optional[Dict[str, Any]] = None,
         result: Optional[Dict[str, Any]] = None,
         error_message: Optional[str] = None,
         execution_time_ms: Optional[float] = None,
-        session_id: Optional[uuid.UUID] = None
+        session_id: Optional[str] = None
     ) -> "ToolExecutionLog":
         """
         Create a tool execution log entry.

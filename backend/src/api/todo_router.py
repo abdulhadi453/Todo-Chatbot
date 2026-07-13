@@ -44,7 +44,7 @@ def create_todo_task(
     """Create a new todo task for the authenticated user"""
     # Pass the authenticated user's ID to the service
     db_task = create_task(session, todo_task, current_user_id)
-    return db_task
+    return TodoTaskRead.from_task(db_task)
 
 
 @router.get("/tasks", response_model=List[TodoTaskRead])
@@ -54,7 +54,8 @@ def read_user_tasks(
 ):
     """Get all todo tasks for the authenticated user"""
     tasks = get_tasks_by_user(session, current_user_id)
-    return tasks
+    # Convert ORM objects to TodoTaskRead schema with proper string serialization
+    return [TodoTaskRead.from_task(task) for task in tasks]
 
 
 @router.get("/tasks/{task_id}", response_model=TodoTaskRead)
@@ -67,7 +68,7 @@ def read_specific_task(
     task = get_task_by_id(session, task_id, current_user_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
-    return task
+    return TodoTaskRead.from_task(task)
 
 
 @router.put("/tasks/{task_id}", response_model=TodoTaskRead)
@@ -81,7 +82,7 @@ def update_todo_task(
     task = update_task(session, task_id, current_user_id, todo_task_update)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
-    return task
+    return TodoTaskRead.from_task(task)
 
 
 @router.delete("/tasks/{task_id}", status_code=204)
@@ -108,4 +109,4 @@ def toggle_complete_task(
     task = toggle_task_completion(session, task_id, current_user_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
-    return task
+    return TodoTaskRead.from_task(task)

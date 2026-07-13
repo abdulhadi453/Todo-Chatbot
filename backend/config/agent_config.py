@@ -16,7 +16,8 @@ class AgentConfig:
 
     # API Keys and Service Settings
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
-    AGENT_MODEL_NAME: str = os.getenv("AGENT_MODEL_NAME", "gpt-4-turbo-preview")
+    # Use a broadly available model by default; can be overridden via env
+    AGENT_MODEL_NAME: str = os.getenv("AGENT_MODEL_NAME", "gpt-3.5-turbo")
 
     # JWT and Authentication
     JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "fallback-secret-key-for-development")

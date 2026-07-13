@@ -4,8 +4,8 @@ import os
 from typing import Generator
 from sqlmodel import SQLModel
 
-# Force SQLite for local development to avoid connection issues
-DATABASE_URL = "sqlite:///./todo_backend.db"
+# Get DATABASE_URL from environment or use SQLite as fallback
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./todo_backend.db")
 
 # Create the engine with connection pooling settings
 pool_size = int(os.getenv("DB_POOL_SIZE", "5"))
@@ -48,9 +48,22 @@ def create_db_and_tables():
     if current_dir not in sys.path:
         sys.path.insert(0, current_dir)
 
+    # Load .env file to ensure DATABASE_URL is set
+    env_file = os.path.join(current_dir, ".env")
+    if os.path.exists(env_file):
+        with open(env_file, "r") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    key, value = line.split("=", 1)
+                    key = key.strip()
+                    value = value.strip().strip('"\'')
+                    os.environ[key] = value
+
     # Import models and create tables with extend_existing to handle duplicates
     # Import User model FIRST (required for foreign key references)
-    from models.user import User
+    # Use the SAME User model that auth is using
+    from src.models.todo_model import User
     from sqlmodel import SQLModel
 
     # Import agent models to ensure they're registered with SQLModel
@@ -72,7 +85,9 @@ def create_db_and_tables():
         print(f"Warning: Could not import TodoTask: {e}")
         pass
 
-    # Create all tables, potentially dropping and recreating if needed
-    # For development purposes, we'll drop and recreate to ensure schema matches models
-    SQLModel.metadata.drop_all(engine)  # Drop existing tables
-    SQLModel.metadata.create_all(engine)  # Create tables with new schema
+    # FORCE DROP AND RECREATE to fix schema (one-time fix)
+    # After this runs once, you can comment out the drop_all line
+    # print("[SCHEMA FIX] Dropping and recreating all tables to fix schema...")
+    # SQLModel.metadata.drop_all(engine)  # Drop existing tables to fix schema
+    # SQLModel.metadata.create_all(engine)  # Create tables with correct schema
+    # print("[SCHEMA FIX] Tables recreated successfully!")

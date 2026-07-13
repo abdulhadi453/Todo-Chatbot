@@ -12,8 +12,9 @@ import uuid
 from backend.database import get_session
 from backend.auth.jwt import get_user_id_from_token
 from backend.services.chat_service import ChatService
-from backend.services.agent_service import AgentService
-from backend.ai.stub_ai import get_ai_response
+from backend.services.openai_agent_service import OpenAIAgentService
+from backend.config.agent_config import AgentConfig
+from openai import OpenAI, OpenAIError
 from backend.models.conversation import Conversation
 from backend.models.message import Message
 from backend.exceptions.chat_exceptions import UnauthorizedAccessException, ConversationNotFoundException
@@ -25,7 +26,8 @@ router = APIRouter(prefix="/api/{user_id}", tags=["chat"])
 async def chat_endpoint(
     user_id: str,
     message_request: Dict[str, Any],
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    current_user_id: str = Depends(get_user_id_from_token)
 ):
     """
     Handle chat interactions between user and AI assistant.
@@ -66,6 +68,13 @@ async def chat_endpoint(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Message content exceeds maximum length of 10,000 characters"
+            )
+
+        # Verify authenticated user matches path user_id
+        if user_id != current_user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied: cannot act on behalf of another user"
             )
 
         # Initialize chat service
@@ -117,18 +126,46 @@ async def chat_endpoint(
             role="user"
         )
 
-        # Generate AI response
+        # Generate AI response using OpenAI. Fall back to stub only if key is not configured.
         try:
-            # Create context for AI response generation
-            conversation_context = {
-                "conversation_id": str(conversation.id),
-                "user_id": str(user_uuid),
-                "message_count": len(conversation.messages) + 1  # Including the one we just added
-            }
+            # Build conversation history for context
+            history_msgs = chat_service.get_full_conversation_history(conversation.id, user_uuid)
+            messages_for_openai = [
+                {"role": "system", "content": "You are an assistant that performs CRUD operations on the user's todo data using plain, concise instructions. Use the information in the conversation history to answer."}
+            ]
+            for m in history_msgs:
+                messages_for_openai.append({"role": m.role, "content": m.content})
+            messages_for_openai.append({"role": "user", "content": user_message})
 
-            ai_response = get_ai_response(user_message, context=conversation_context)
+            use_stub = False
+            if not AgentConfig.OPENAI_API_KEY:
+                use_stub = True
+
+            if use_stub:
+                # fallback to stub implementation
+                from backend.ai.stub_ai import get_ai_response
+                ai_response = get_ai_response(user_message, context={"conversation_id": str(conversation.id), "user_id": str(user_uuid)})
+            else:
+                client = OpenAI(api_key=AgentConfig.OPENAI_API_KEY)
+                resp = client.chat.completions.create(
+                    model=AgentConfig.AGENT_MODEL_NAME,
+                    messages=messages_for_openai,
+                    temperature=AgentConfig.AGENT_TEMPERATURE,
+                    max_tokens=AgentConfig.AGENT_MAX_TOKENS,
+                    timeout=AgentConfig.AGENT_TIMEOUT_SECONDS
+                )
+                # Safe extraction of assistant content
+                ai_response = ""
+                try:
+                    ai_response = resp.choices[0].message.content
+                except Exception:
+                    ai_response = str(resp)
+        except OpenAIError as e:
+            # OpenAI client-specific error: fall back to stub
+            from backend.ai.stub_ai import get_ai_response
+            ai_response = get_ai_response(user_message, context={"conversation_id": str(conversation.id), "user_id": str(user_uuid)})
         except Exception as e:
-            # If AI response generation fails, return an error
+            # If AI response generation fails unexpectedly, return an error
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Failed to generate AI response: {str(e)}"

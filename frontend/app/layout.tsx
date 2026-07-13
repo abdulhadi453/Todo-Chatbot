@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "../src/context/auth-context";
 import { ThemeProvider } from "../src/context/theme-context";
+import { TaskRefreshProvider } from "../src/context/task-refresh-context";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -26,10 +27,12 @@ export default function RootLayout({
       >
         <ThemeProvider>
           <AuthProvider>
-            {/* App wrapper */}
-            <div className="flex flex-col min-h-screen">
-              {children}
-            </div>
+            <TaskRefreshProvider>
+              {/* App wrapper */}
+              <div className="flex flex-col min-h-screen">
+                {children}
+              </div>
+            </TaskRefreshProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>
