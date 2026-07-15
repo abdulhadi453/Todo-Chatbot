@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import os
+from contextlib import asynccontextmanager
 
 # Add the backend directory to the Python path to allow absolute imports
 import sys
@@ -17,11 +18,23 @@ from backend.src.api.auth_router import router as auth_router
 from backend.config.database import create_db_and_tables
 from backend.routers.agent import router as agent_router  # AI Agent router
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    create_db_and_tables()
+    print("App is starting up! Database connecting...")
+
+    yield
+
+    # Shutdown
+    print("App is shutting down! Database disconnecting...")
+
 # Create FastAPI app with additional metadata for authentication
 app = FastAPI(
     title="Todo Backend API with Authentication",
     description="A FastAPI backend for managing todo tasks with user scoping and JWT authentication",
     version="1.0.0",
+    lifespan=lifespan,
     contact={
         "name": "Todo API Support",
         "url": "http://example.com/support",
@@ -41,11 +54,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Create database tables on startup
-@app.on_event("startup")
-async def on_startup():
-    create_db_and_tables()
 
 # Include routers
 app.include_router(auth_router)  # Authentication endpoints
