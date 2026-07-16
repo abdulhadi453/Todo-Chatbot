@@ -15,10 +15,10 @@ const LandingPage = () => {
         <div className="absolute inset-0 overflow-hidden" aria-hidden="true">
           <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/10 rounded-full blur-3xl"></div>
           <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-accent/10 rounded-full blur-3xl"></div>
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-to-r from-primary/5 to-accent/5 rounded-full blur-3xl"></div>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-200 h-200 bg-linear-to-r from-primary/5 to-accent/5 rounded-full blur-3xl"></div>
         </div>
 
-        <div className="relative z-10 flex-grow flex items-center justify-center">
+        <div className="relative z-10 grow flex items-center justify-center">
           <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-16">
             <div className="text-center mb-10 sm:mb-16">
               <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full text-sm font-medium mb-6 border border-primary/20">
@@ -42,7 +42,7 @@ const LandingPage = () => {
                 <Button
                   asChild
                   size="lg"
-                  className="px-8 py-4 text-base font-bold gap-2 h-12 rounded-full bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-primary-foreground shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  className="px-8 py-4 text-base font-bold gap-2 h-12 rounded-full bg-linear-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-primary-foreground shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-primary/30"
                 >
                   <Link href="/signup">
                     Start Your Journey - It's Free
@@ -75,7 +75,7 @@ const LandingPage = () => {
               >
                 <CardContent className="p-6 text-center space-y-4">
                   <div
-                    className="mx-auto w-12 h-12 rounded-full bg-gradient-to-r to-yellow-400 from-primary to-accent flex items-center justify-center transition-transform duration-300 hover:scale-110"
+                    className="mx-auto w-12 h-12 rounded-full bg-linear-to-r to-yellow-400 from-primary to-accent flex items-center justify-center transition-transform duration-300 hover:scale-110"
                     aria-hidden="true"
                   >
                     <Zap className="h-6 w-6 text-primary-foreground" />
@@ -100,7 +100,7 @@ const LandingPage = () => {
               >
                 <CardContent className="p-6 text-center space-y-4">
                   <div
-                    className="mx-auto w-12 h-12 rounded-full bg-gradient-to-r to-violet-500 from-secondary to-muted flex items-center justify-center transition-transform duration-300 hover:scale-110"
+                    className="mx-auto w-12 h-12 rounded-full bg-linear-to-r to-violet-500 from-secondary to-muted flex items-center justify-center transition-transform duration-300 hover:scale-110"
                     aria-hidden="true"
                   >
                     <Globe className="h-6 w-6 text-secondary-foreground" />
@@ -124,7 +124,7 @@ const LandingPage = () => {
               >
                 <CardContent className="p-6 text-center space-y-4">
                   <div
-                    className="mx-auto w-12 h-12 rounded-full bg-gradient-to-r from-success to-emerald-500 flex items-center justify-center transition-transform duration-300 hover:scale-110"
+                    className="mx-auto w-12 h-12 rounded-full bg-linear-to-r from-success to-emerald-500 flex items-center justify-center transition-transform duration-300 hover:scale-110"
                     aria-hidden="true"
                   >
                     <Shield className="h-6 w-6 text-success-foreground" />

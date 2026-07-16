@@ -28,7 +28,7 @@ const ProtectedRoute = ({
   // Show loading state while checking authentication
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-background via-primary/5 to-background">
+      <div className="flex items-center justify-center min-h-screen bg-linear-to-br from-background via-primary/5 to-background">
         <div className="relative">
           <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-primary"></div>
           <div className="absolute inset-0 rounded-full bg-primary/20 blur-xl animate-pulse"></div>
