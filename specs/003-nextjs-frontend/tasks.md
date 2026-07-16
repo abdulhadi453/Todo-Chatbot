@@ -15,25 +15,25 @@ Implement the Next.js frontend application in priority order of user stories. St
 
 Initialize the project structure and dependencies for the Next.js application.
 
-- [X] T001 Create frontend directory structure
-- [X] T002 Initialize Next.js 16+ project with App Router, TypeScript, and Tailwind CSS
-- [X] T003 Install Better Auth and related dependencies in frontend/package.json
-- [X] T004 Install axios for API client implementation
-- [X] T005 Create src/app directory structure for pages (login, signup, dashboard, tasks)
-- [X] T006 Set up environment variables for API configuration
+- [x] T001 Create frontend directory structure
+- [x] T002 Initialize Next.js 16+ project with App Router, TypeScript, and Tailwind CSS
+- [x] T003 Install Better Auth and related dependencies in frontend/package.json
+- [x] T004 Install axios for API client implementation
+- [x] T005 Create src/app directory structure for pages (login, signup, dashboard, tasks)
+- [x] T006 Set up environment variables for API configuration
 
 ## Phase 2: Foundational Tasks
 
 Implement foundational components needed by all user stories.
 
-- [X] T010 [P] Create TypeScript interfaces for User entity in src/types/user.ts
-- [X] T011 [P] Create TypeScript interfaces for TodoTask entity in src/types/task.ts
-- [X] T012 [P] Create API client service in src/services/api-client.ts with axios and JWT handling
-- [X] T013 [P] Create authentication context/provider in src/context/auth-context.tsx
-- [X] T014 [P] Create protected route component in src/components/protected-route.tsx
-- [X] T015 [P] Create reusable UI components (Button, Input, Card) in src/components/ui/
-- [X] T016 [P] Create responsive layout components in src/components/layout/
-- [X] T017 [P] Set up global styles with Tailwind CSS in src/app/globals.css
+- [x] T010 [P] Create TypeScript interfaces for User entity in src/types/user.ts
+- [x] T011 [P] Create TypeScript interfaces for TodoTask entity in src/types/task.ts
+- [x] T012 [P] Create API client service in src/services/api-client.ts with axios and JWT handling
+- [x] T013 [P] Create authentication context/provider in src/context/auth-context.tsx
+- [x] T014 [P] Create protected route component in src/components/protected-route.tsx
+- [x] T015 [P] Create reusable UI components (Button, Input, Card) in src/components/ui/
+- [x] T016 [P] Create responsive layout components in src/components/layout/
+- [x] T017 [P] Set up global styles with Tailwind CSS in src/app/globals.css
 
 ## Phase 3: User Story 1 - Registration & Account Creation (Priority: P1)
 
@@ -42,13 +42,13 @@ A new user wants to sign up for an account, so that they can start managing thei
 **Goal**: Enable users to register for an account via the frontend
 **Independent Test**: A new user can visit the sign-up page, provide valid credentials, and successfully create an account that persists for future logins
 
-- [X] T020 [P] [US1] Create signup form component in src/components/auth/signup-form.tsx
-- [X] T021 [US1] Create signup page in src/app/signup/page.tsx
-- [X] T022 [US1] Implement signup form validation and submission in signup-form.tsx
-- [X] T023 [US1] Connect signup form to API client for registration endpoint
-- [X] T024 [US1] Add success/error messaging for signup flow
-- [X] T025 [US1] Add validation for email format and password strength
-- [X] T026 [US1] Redirect to login page after successful signup
+- [x] T020 [P] [US1] Create signup form component in src/components/auth/signup-form.tsx
+- [x] T021 [US1] Create signup page in src/app/signup/page.tsx
+- [x] T022 [US1] Implement signup form validation and submission in signup-form.tsx
+- [x] T023 [US1] Connect signup form to API client for registration endpoint
+- [x] T024 [US1] Add success/error messaging for signup flow
+- [x] T025 [US1] Add validation for email format and password strength
+- [x] T026 [US1] Redirect to login page after successful signup
 
 ## Phase 4: User Story 2 - Login & Session Management (Priority: P1)
 
@@ -57,14 +57,14 @@ A returning user wants to sign in to their account, so that they can access thei
 **Goal**: Enable users to authenticate and establish sessions
 **Independent Test**: A registered user can log in with their credentials and access their authenticated session
 
-- [X] T030 [P] [US2] Create signin form component in src/components/auth/signin-form.tsx
-- [X] T031 [US2] Create signin page in src/app/signin/page.tsx
-- [X] T032 [US2] Implement signin form validation and submission in signin-form.tsx
-- [X] T033 [US2] Connect signin form to API client for login endpoint
-- [X] T034 [US2] Update auth context with user session data
-- [X] T035 [US2] Implement JWT token storage and retrieval
-- [X] T036 [US2] Redirect to dashboard after successful login
-- [X] T037 [US2] Add error handling for invalid credentials
+- [x] T030 [P] [US2] Create signin form component in src/components/auth/login-form.tsx
+- [x] T031 [US2] Create signin page in src/app/login/page.tsx
+- [x] T032 [US2] Implement signin form validation and submission in signin-form.tsx
+- [x] T033 [US2] Connect signin form to API client for login endpoint
+- [x] T034 [US2] Update auth context with user session data
+- [x] T035 [US2] Implement JWT token storage and retrieval
+- [x] T036 [US2] Redirect to dashboard after successful login
+- [x] T037 [US2] Add error handling for invalid credentials
 
 ## Phase 5: User Story 3 - View Personal Task List (Priority: P1)
 
@@ -73,14 +73,14 @@ An authenticated user wants to view their personal task list, so that they can s
 **Goal**: Display all tasks for the authenticated user
 **Independent Test**: An authenticated user can view all their tasks in a clear, organized manner
 
-- [X] T040 [P] [US3] Create task list component in src/components/tasks/task-list.tsx
-- [X] T041 [P] [US3] Create task item component in src/components/tasks/task-item.tsx
-- [X] T042 [US3] Create dashboard page in src/app/dashboard/page.tsx
-- [X] T043 [US3] Implement API call to fetch user's tasks from backend
-- [X] T044 [US3] Display tasks in a responsive list format
-- [X] T045 [US3] Handle empty state when user has no tasks
-- [X] T046 [US3] Add loading states for task retrieval
-- [X] T047 [US3] Implement error handling for task fetch failures
+- [x] T040 [P] [US3] Create task list component in src/components/tasks/task-list.tsx
+- [x] T041 [P] [US3] Create task item component in src/components/tasks/task-item.tsx
+- [x] T042 [US3] Create dashboard page in src/app/dashboard/page.tsx
+- [x] T043 [US3] Implement API call to fetch user's tasks from backend
+- [x] T044 [US3] Display tasks in a responsive list format
+- [x] T045 [US3] Handle empty state when user has no tasks
+- [x] T046 [US3] Add loading states for task retrieval
+- [x] T047 [US3] Implement error handling for task fetch failures
 
 ## Phase 6: User Story 4 - Add New Tasks (Priority: P2)
 
@@ -89,13 +89,13 @@ An authenticated user wants to add new tasks to their list, so that they can tra
 **Goal**: Enable users to create new tasks that persist in the backend
 **Independent Test**: An authenticated user can create new tasks that persist in the backend and appear in their list
 
-- [X] T050 [P] [US4] Create add task form component in src/components/tasks/add-task-form.tsx
-- [X] T051 [US4] Integrate add task form into dashboard page
-- [X] T052 [US4] Implement API call to create new task via POST endpoint
-- [X] T053 [US4] Add form validation for task description
-- [X] T054 [US4] Update task list with new task after successful creation
-- [X] T055 [US4] Add success/error messaging for task creation
-- [X] T056 [US4] Clear form after successful task creation
+- [x] T050 [P] [US4] Create add task form component in src/components/tasks/add-task-form.tsx
+- [x] T051 [US4] Integrate add task form into dashboard page
+- [x] T052 [US4] Implement API call to create new task via POST endpoint
+- [x] T053 [US4] Add form validation for task description
+- [x] T054 [US4] Update task list with new task after successful creation
+- [x] T055 [US4] Add success/error messaging for task creation
+- [x] T056 [US4] Clear form after successful task creation
 
 ## Phase 7: User Story 7 - Toggle Task Completion (Priority: P2)
 
@@ -104,12 +104,12 @@ An authenticated user wants to mark tasks as complete/incomplete, so that they c
 **Goal**: Enable users to toggle task completion status
 **Independent Test**: An authenticated user can toggle task completion status which is persisted in the backend
 
-- [X] T060 [P] [US7] Add completion toggle to task item component
-- [X] T061 [US7] Implement API call to update task completion via PATCH endpoint
-- [X] T062 [US7] Update task UI immediately on toggle action
-- [X] T063 [US7] Handle optimistic updates for better UX
-- [X] T064 [US7] Revert UI changes if API call fails
-- [X] T065 [US7] Add error handling for completion toggle failures
+- [x] T060 [P] [US7] Add completion toggle to task item component
+- [x] T061 [US7] Implement API call to update task completion via PATCH endpoint
+- [x] T062 [US7] Update task UI immediately on toggle action
+- [x] T063 [US7] Handle optimistic updates for better UX
+- [x] T064 [US7] Revert UI changes if API call fails
+- [x] T065 [US7] Add error handling for completion toggle failures
 
 ## Phase 8: User Story 5 - Update Task Descriptions (Priority: P3)
 
@@ -118,13 +118,13 @@ An authenticated user wants to update task descriptions, so that they can refine
 **Goal**: Enable users to modify existing task descriptions
 **Independent Test**: An authenticated user can modify existing task descriptions which are persisted in the backend
 
-- [X] T070 [P] [US5] Add edit functionality to task item component
-- [X] T071 [US5] Create inline task editor in task-item.tsx
-- [X] T072 [US5] Implement API call to update task via PUT endpoint
-- [X] T073 [US5] Add form validation for updated task description
-- [X] T074 [US5] Switch between view and edit modes
-- [X] T075 [US5] Handle optimistic updates for task editing
-- [X] T076 [US5] Add error handling for task update failures
+- [x] T070 [P] [US5] Add edit functionality to task item component
+- [x] T071 [US5] Create inline task editor in task-item.tsx
+- [x] T072 [US5] Implement API call to update task via PUT endpoint
+- [x] T073 [US5] Add form validation for updated task description
+- [x] T074 [US5] Switch between view and edit modes
+- [x] T075 [US5] Handle optimistic updates for task editing
+- [x] T076 [US5] Add error handling for task update failures
 
 ## Phase 9: User Story 6 - Delete Tasks (Priority: P3)
 
@@ -133,24 +133,24 @@ An authenticated user wants to delete completed or irrelevant tasks, so that the
 **Goal**: Enable users to remove tasks from the system
 **Independent Test**: An authenticated user can remove tasks which are deleted from the backend
 
-- [X] T080 [P] [US6] Add delete button to task item component
-- [X] T081 [US6] Implement API call to delete task via DELETE endpoint
-- [X] T082 [US6] Add confirmation dialog for task deletion
-- [X] T083 [US6] Remove task from UI after successful deletion
-- [X] T084 [US6] Handle optimistic deletion with rollback on failure
-- [X] T085 [US6] Add error handling for task deletion failures
+- [x] T080 [P] [US6] Add delete button to task item component
+- [x] T081 [US6] Implement API call to delete task via DELETE endpoint
+- [x] T082 [US6] Add confirmation dialog for task deletion
+- [x] T083 [US6] Remove task from UI after successful deletion
+- [x] T084 [US6] Handle optimistic deletion with rollback on failure
+- [x] T085 [US6] Add error handling for task deletion failures
 
 ## Phase 10: Polish & Cross-Cutting Concerns
 
 Final touches and quality improvements.
 
-- [X] T090 Add comprehensive error boundaries throughout the application
+- [x] T090 Add comprehensive error boundaries throughout the application
 - [ ] T091 Add request/response logging for debugging
-- [X] T092 Implement token refresh mechanism for long sessions
+- [x] T092 Implement token refresh mechanism for long sessions
 - [ ] T093 Add input sanitization and validation for security
 - [ ] T094 Create responsive design that works on mobile/desktop
 - [ ] T095 Add proper loading states and skeleton screens
-- [X] T096 Update README with frontend setup and usage instructions
+- [x] T096 Update README with frontend setup and usage instructions
 - [ ] T097 Run full application to ensure all functionality works together
 - [ ] T098 Add accessibility attributes and ARIA labels
 - [ ] T099 Add automated tests for critical user flows

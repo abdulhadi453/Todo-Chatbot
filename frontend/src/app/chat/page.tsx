@@ -328,7 +328,7 @@ const ChatPage = () => {
             )}
 
             {/* Message history */}
-            <div className="flex-1 bg-white rounded-lg shadow p-4 mb-4 min-h-[400px] max-h-[calc(100vh-320px)] overflow-y-auto">
+            <div className="flex-1 bg-white rounded-lg shadow p-4 mb-4 min-h-100 max-h-[calc(100vh-320px)] overflow-y-auto">
               <MessageHistory messages={messages} />
 
               {/* Streaming message */}

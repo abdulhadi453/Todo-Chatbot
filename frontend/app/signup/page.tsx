@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import React from 'react';
-import Link from 'next/link';
-import Layout from '../../src/components/layout/layout';
-import SignupForm from '../../src/components/auth/signup-form';
-import { Rocket } from 'lucide-react';
+import React from "react";
+import Link from "next/link";
+import Layout from "../../src/components/layout/layout";
+import SignupForm from "../../src/components/auth/signup-form";
+import { Rocket } from "lucide-react";
 
 const SignupPage = () => {
   return (
@@ -24,8 +24,11 @@ const SignupPage = () => {
           <SignupForm />
 
           <div className="mt-8 text-center text-sm text-muted-foreground">
-            Already have an account?{' '}
-            <Link href="/signin" className="font-medium text-primary hover:text-accent transition-colors">
+            Already have an account?{" "}
+            <Link
+              href="/login"
+              className="font-medium text-primary hover:text-accent transition-colors"
+            >
               Sign in
             </Link>
           </div>

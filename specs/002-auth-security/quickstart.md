@@ -1,9 +1,11 @@
 # Quickstart Guide: Authentication & API Security
 
 ## Overview
+
 This guide explains how to set up and use the authentication and authorization features for the Todo Backend API.
 
 ## Prerequisites
+
 - Completed setup from previous Todo Backend API feature
 - Python 3.13+
 - Node.js 18+ (for frontend authentication)
@@ -13,6 +15,7 @@ This guide explains how to set up and use the authentication and authorization f
 ## Frontend Setup (Next.js + Better Auth)
 
 ### 1. Install Better Auth
+
 ```bash
 npm install better-auth
 # or
@@ -20,7 +23,9 @@ yarn add better-auth
 ```
 
 ### 2. Configure Better Auth
+
 Create `frontend/src/auth/auth-config.ts`:
+
 ```typescript
 import { betterAuth } from "better-auth";
 
@@ -44,7 +49,9 @@ export const auth = betterAuth({
 ```
 
 ### 3. Set up Auth Provider
+
 Create `frontend/src/auth/auth-provider.tsx`:
+
 ```tsx
 "use client";
 
@@ -59,7 +66,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 ## Backend Setup (FastAPI + JWT)
 
 ### 1. Install Additional Dependencies
+
 Add to `backend/requirements.txt`:
+
 ```
 PyJWT==2.8.0
 python-jose[cryptography]==3.3.0
@@ -67,7 +76,9 @@ passlib[bcrypt]==1.7.4
 ```
 
 ### 2. Configure JWT Settings
+
 Create `backend/config/auth.py`:
+
 ```python
 import os
 from datetime import timedelta
@@ -80,7 +91,9 @@ REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
 ```
 
 ### 3. Create JWT Utilities
+
 Create `backend/src/auth/jwt-utils.py`:
+
 ```python
 from datetime import datetime, timedelta
 from typing import Optional
@@ -117,7 +130,9 @@ def verify_token(token: str):
 ```
 
 ### 4. Create Authentication Dependencies
+
 Create `backend/src/auth/auth-dependencies.py`:
+
 ```python
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -151,6 +166,7 @@ def get_user_from_token(
 ## API Usage Examples
 
 ### 1. Register New User
+
 ```bash
 curl -X POST http://localhost:8000/auth/register \
   -H "Content-Type: application/json" \
@@ -162,6 +178,7 @@ curl -X POST http://localhost:8000/auth/register \
 ```
 
 ### 2. Login
+
 ```bash
 curl -X POST http://localhost:8000/auth/login \
   -H "Content-Type: application/json" \
@@ -172,6 +189,7 @@ curl -X POST http://localhost:8000/auth/login \
 ```
 
 ### 3. Use JWT Token for Protected Endpoints
+
 ```bash
 # Save the JWT token from login response
 TOKEN="your-jwt-token-from-login-response"
@@ -182,6 +200,7 @@ curl -X GET http://localhost:8000/api/user123/tasks \
 ```
 
 ### 4. Add a Task (Protected)
+
 ```bash
 curl -X POST http://localhost:8000/api/user123/tasks \
   -H "Authorization: Bearer $TOKEN" \
@@ -192,17 +211,20 @@ curl -X POST http://localhost:8000/api/user123/tasks \
 ## Frontend Integration
 
 ### 1. API Client with Token Attachment
+
 Create `frontend/src/services/api-client.ts`:
+
 ```typescript
 class ApiClient {
-  private baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+  private baseUrl =
+    process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
   async request(endpoint: string, options: RequestInit = {}) {
     const token = this.getToken();
 
     const headers = {
-      'Content-Type': 'application/json',
-      ...(token && { 'Authorization': `Bearer ${token}` }),
+      "Content-Type": "application/json",
+      ...(token && { Authorization: `Bearer ${token}` }),
       ...options.headers,
     };
 
@@ -220,7 +242,7 @@ class ApiClient {
 
   private getToken(): string | null {
     // Get token from auth provider or storage
-    return localStorage.getItem('auth-token');
+    return localStorage.getItem("auth-token");
   }
 }
 
@@ -228,13 +250,15 @@ export const apiClient = new ApiClient();
 ```
 
 ### 2. Protected Route Component
-Create `frontend/src/components/protected-route.tsx`:
-```tsx
-'use client';
 
-import { useAuth } from 'better-auth/react';
-import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+Create `frontend/src/components/protected-route.tsx`:
+
+```tsx
+"use client";
+
+import { useAuth } from "better-auth/react";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { session, isPending } = useAuth();
@@ -242,7 +266,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!isPending && !session) {
-      router.push('/signin');
+      router.push("/login");
     }
   }, [session, isPending, router]);
 
@@ -255,11 +279,13 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
 ```
 
 ## Configuration
+
 - JWT Secret Key: Set via JWT_SECRET_KEY environment variable
 - Token Expiration: Set via ACCESS_TOKEN_EXPIRE_MINUTES environment variable
 - Refresh Token Expiration: Set via REFRESH_TOKEN_EXPIRE_DAYS environment variable
 
 ## Security Best Practices
+
 - Use strong, unique JWT secret keys in production
 - Implement token rotation for enhanced security
 - Set secure HTTP-only cookies for tokens when possible

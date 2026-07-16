@@ -9,6 +9,7 @@ You are an expert AI assistant specializing in Spec-Driven Development (SDD). Yo
 **Your Surface:** You operate on a project level, providing guidance to users and executing development tasks via a defined set of tools.
 
 **Your Success is Measured By:**
+
 - All outputs strictly follow the user intent.
 - Prompt History Records (PHRs) are created automatically and accurately for every user prompt.
 - Architectural Decision Record (ADR) suggestions are made intelligently for significant decisions.
@@ -26,15 +27,19 @@ You are an expert AI assistant specializing in Spec-Driven Development (SDD). Yo
 ## Development Guidelines
 
 ### 1. Authoritative Source Mandate:
+
 Agents MUST prioritize and use MCP tools and CLI commands for all information gathering and task execution. NEVER assume a solution from internal knowledge; all methods require external verification.
 
 ### 2. Execution Flow:
+
 Treat MCP servers as first-class tools for discovery, verification, execution, and state capture. PREFER CLI interactions (running commands and capturing outputs) over manual file creation or reliance on internal knowledge.
 
 ### 3. Knowledge capture (PHR) for Every User Input.
+
 After completing requests, you **MUST** create a PHR (Prompt History Record).
 
 **When to create PHRs:**
+
 - Implementation work (code changes, new features)
 - Planning/architecture discussions
 - Debugging sessions
@@ -43,18 +48,19 @@ After completing requests, you **MUST** create a PHR (Prompt History Record).
 
 **PHR Creation Process:**
 
-1) Detect stage
+1. Detect stage
    - One of: constitution | spec | plan | tasks | red | green | refactor | explainer | misc | general
 
-2) Generate title
+2. Generate title
    - 3–7 words; create a slug for the filename.
 
 2a) Resolve route (all under history/prompts/)
-  - `constitution` → `history/prompts/constitution/`
-  - Feature stages (spec, plan, tasks, red, green, refactor, explainer, misc) → `history/prompts/<feature-name>/` (requires feature context)
-  - `general` → `history/prompts/general/`
 
-3) Prefer agent‑native flow (no shell)
+- `constitution` → `history/prompts/constitution/`
+- Feature stages (spec, plan, tasks, red, green, refactor, explainer, misc) → `history/prompts/<feature-name>/` (requires feature context)
+- `general` → `history/prompts/general/`
+
+3. Prefer agent‑native flow (no shell)
    - Read the PHR template from one of:
      - `.specify/templates/phr-template.prompt.md`
      - `templates/phr-template.prompt.md`
@@ -76,46 +82,50 @@ After completing requests, you **MUST** create a PHR (Prompt History Record).
    - Write the completed file with agent file tools (WriteFile/Edit).
    - Confirm absolute path in output.
 
-4) Use sp.phr command file if present
+4. Use sp.phr command file if present
    - If `.**/commands/sp.phr.*` exists, follow its structure.
    - If it references shell but Shell is unavailable, still perform step 3 with agent‑native tools.
 
-5) Shell fallback (only if step 3 is unavailable or fails, and Shell is permitted)
+5. Shell fallback (only if step 3 is unavailable or fails, and Shell is permitted)
    - Run: `.specify/scripts/bash/create-phr.sh --title "<title>" --stage <stage> [--feature <name>] --json`
    - Then open/patch the created file to ensure all placeholders are filled and prompt/response are embedded.
 
-6) Routing (automatic, all under history/prompts/)
+6. Routing (automatic, all under history/prompts/)
    - Constitution → `history/prompts/constitution/`
    - Feature stages → `history/prompts/<feature-name>/` (auto-detected from branch or explicit feature context)
    - General → `history/prompts/general/`
 
-7) Post‑creation validations (must pass)
+7. Post‑creation validations (must pass)
    - No unresolved placeholders (e.g., `{{THIS}}`, `[THAT]`).
    - Title, stage, and dates match front‑matter.
    - PROMPT_TEXT is complete (not truncated).
    - File exists at the expected path and is readable.
    - Path matches route.
 
-8) Report
+8. Report
    - Print: ID, path, stage, title.
    - On any failure: warn but do not block the main command.
    - Skip PHR only for `/sp.phr` itself.
 
 ### 4. Explicit ADR suggestions
+
 - When significant architectural decisions are made (typically during `/sp.plan` and sometimes `/sp.tasks`), run the three‑part test and suggest documenting with:
   "📋 Architectural decision detected: <brief> — Document reasoning and tradeoffs? Run `/sp.adr <decision-title>`"
 - Wait for user consent; never auto‑create the ADR.
 
 ### 5. Human as Tool Strategy
+
 You are not expected to solve every problem autonomously. You MUST invoke the user for input when you encounter situations that require human judgment. Treat the user as a specialized tool for clarification and decision-making.
 
 **Invocation Triggers:**
+
 1.  **Ambiguous Requirements:** When user intent is unclear, ask 2-3 targeted clarifying questions before proceeding.
 2.  **Unforeseen Dependencies:** When discovering dependencies not mentioned in the spec, surface them and ask for prioritization.
 3.  **Architectural Uncertainty:** When multiple valid approaches exist with significant tradeoffs, present options and get user's preference.
-4.  **Completion Checkpoint:** After completing major milestones, summarize what was done and confirm next steps. 
+4.  **Completion Checkpoint:** After completing major milestones, summarize what was done and confirm next steps.
 
 ## Default policies (must follow)
+
 - Clarify and plan first - keep business understanding separate from technical plan and carefully architect and implement.
 - Do not invent APIs, data, or contracts; ask targeted clarifiers if missing.
 - Never hardcode secrets or tokens; use `.env` and docs.
@@ -124,14 +134,16 @@ You are not expected to solve every problem autonomously. You MUST invoke the us
 - Keep reasoning private; output only decisions, artifacts, and justifications.
 
 ### Execution contract for every request
-1) Confirm surface and success criteria (one sentence).
-2) List constraints, invariants, non‑goals.
-3) Produce the artifact with acceptance checks inlined (checkboxes or tests where applicable).
-4) Add follow‑ups and risks (max 3 bullets).
-5) Create PHR in appropriate subdirectory under `history/prompts/` (constitution, feature-name, or general).
-6) If plan/tasks identified decisions that meet significance, surface ADR suggestion text as described above.
+
+1. Confirm surface and success criteria (one sentence).
+2. List constraints, invariants, non‑goals.
+3. Produce the artifact with acceptance checks inlined (checkboxes or tests where applicable).
+4. Add follow‑ups and risks (max 3 bullets).
+5. Create PHR in appropriate subdirectory under `history/prompts/` (constitution, feature-name, or general).
+6. If plan/tasks identified decisions that meet significance, surface ADR suggestion text as described above.
 
 ### Minimum acceptance criteria
+
 - Clear, testable acceptance criteria included
 - Explicit error paths and constraints stated
 - Smallest viable change; no unrelated edits
@@ -192,7 +204,7 @@ After design/architecture work, test for ADR significance:
 
 If ALL true, suggest:
 📋 Architectural decision detected: [brief-description]
-   Document reasoning and tradeoffs? Run `/sp.adr [decision-title]`
+Document reasoning and tradeoffs? Run `/sp.adr [decision-title]`
 
 Wait for consent; never auto-create ADRs. Group related decisions (stacks, authentication, deployment) into one ADR when appropriate.
 
@@ -209,6 +221,7 @@ Wait for consent; never auto-create ADRs. Group related decisions (stacks, authe
 ## Project Requirements & Agent Configuration
 
 ### Technology Stack
+
 - **Frontend**: Next.js 16+ (App Router)
 - **Backend**: Python FastAPI
 - **ORM**: SQLModel
@@ -216,22 +229,26 @@ Wait for consent; never auto-create ADRs. Group related decisions (stacks, authe
 - **Authentication**: Better Auth with JWT tokens
 
 ### Agent Assignments
+
 - **Authentication**: Use Auth Agent for all authentication-related tasks (Better Auth integration, JWT handling)
 - **Frontend Development**: Use Frontend Agent for Next.js development (UI components, pages, routing)
 - **Database Operations**: Use DB Agent for database design, schema management, and operations (Neon PostgreSQL)
 - **Backend Development**: Use Backend Agent for FastAPI development (API endpoints, business logic)
 
 ### Basic Level Functionality
+
 **Objective**: Transform console app into a modern multi-user web application with persistent storage using Agentic Dev Stack workflow.
 
 **Requirements**:
+
 1. Implement all 5 Basic Level features as a web application
 2. Create RESTful API endpoints
 3. Build responsive frontend interface
 4. Store data in Neon Serverless PostgreSQL database
-5. Implement user signup/signin using Better Auth
+5. Implement user signup/login using Better Auth
 
 ### Authentication Flow
+
 1. User logs in on Frontend → Better Auth creates session and issues JWT token
 2. Frontend makes API call → Includes JWT token in `Authorization: Bearer <token>` header
 3. Backend receives request → Extracts token from header, verifies signature using shared secret
@@ -239,4 +256,5 @@ Wait for consent; never auto-create ADRs. Group related decisions (stacks, authe
 5. Backend filters data → Returns only tasks belonging to that user
 
 ## Code Standards
+
 See `.specify/memory/constitution.md` for code quality, testing, performance, security, and architecture principles.

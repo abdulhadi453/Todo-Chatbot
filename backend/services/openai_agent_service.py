@@ -298,16 +298,22 @@ class OpenAIAgentService(AgentService):
         except ValidationError as e:
             error_msg = f"Validation error executing tool {tool_name}: {str(e)}"
             logger.error(error_msg)
+            # Rollback the session on validation error
+            self.session.rollback()
             self._log_tool_execution_error(tool_name, tool_arguments, str(e), "validation_error")
             return {"error": f"Validation error: {str(e)}", "success": False}
         except UnauthorizedAccessException as e:
             error_msg = f"Authorization error executing tool {tool_name}: {str(e)}"
             logger.error(error_msg)
+            # Rollback the session on authorization error
+            self.session.rollback()
             self._log_tool_execution_error(tool_name, tool_arguments, str(e), "authorization_error")
             return {"error": f"Authorization error: {str(e)}", "success": False}
         except Exception as e:
             error_msg = f"Unexpected error executing tool {tool_name}: {str(e)}"
             logger.error(error_msg, exc_info=True)  # Include full traceback
+            # Rollback the session on any unexpected error
+            self.session.rollback()
             self._log_tool_execution_error(tool_name, tool_arguments, str(e), "unexpected_error")
 
             # More descriptive error for the user
@@ -472,6 +478,12 @@ class OpenAIAgentService(AgentService):
         Returns:
             Result dict if operation was handled, None otherwise
         """
+        # Ensure clean session state before starting
+        try:
+            self.session.rollback()
+        except Exception:
+            pass  # Ignore if no active transaction
+
         message_lower = message.lower()
         import re
 
@@ -481,38 +493,112 @@ class OpenAIAgentService(AgentService):
         task_ref = None
         update_data = {}
 
-        # === MARK INCOMPLETE (CHECK THIS FIRST BEFORE MARK COMPLETE!) ===
-        if 'incomplete' in message_lower or 'uncomplete' in message_lower or 'not complete' in message_lower:
+        # === DUE DATE OPERATIONS (CHECK FIRST - most specific) ===
+        if 'due date' in message_lower or ('due' in message_lower and any(word in message_lower for word in ['set', 'add', 'change', 'update', 'edit'])) or 'deadline' in message_lower:
+            operation = 'set_due_date'
+            logger.info(f"📅 ORCHESTRATION: Detected due date change")
+
+            # Extract task reference first
+            quoted = re.search(r'["\']([^"\']+)["\']', message)
+            if quoted:
+                task_ref = quoted.group(1)
+                logger.info(f"📅 Extracted task from quotes: '{task_ref}'")
+            else:
+                # Remove common filler words
+                clean_msg = message_lower.replace(' my ', ' ').replace(' the ', ' ').replace(' task ', ' ')
+
+                # Pattern 1: "in/for X" - task comes after "in" or "for"
+                match = re.search(r'(?:in|for)\s+(.+?)(?:\s*$)', clean_msg)
+                if match:
+                    # Remove any date from the extracted task name
+                    potential_task = match.group(1).strip()
+                    # Remove digits and month names that are part of the date
+                    potential_task = re.sub(r'\d+\s*(?:january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)', '', potential_task).strip()
+                    if potential_task:
+                        task_ref = potential_task
+                        logger.info(f"📅 Extracted task (pattern: in/for): '{task_ref}'")
+
+            logger.info(f"📅 Final extracted task_ref: '{task_ref}'")
+
+            # Extract date - handle multiple formats
+            logger.info(f"📅 Attempting to extract date from: '{message}'")
+
+            # Try ISO format first (YYYY-MM-DD)
+            date_match = re.search(r'(\d{4}-\d{2}-\d{2})', message)
+            if date_match:
+                update_data['due_date'] = date_match.group(0) + 'T00:00:00'
+                logger.info(f"📅 Extracted ISO date: {update_data['due_date']}")
+            else:
+                # Try natural language dates like "17 july" or "july 17"
+                month_pattern = r'(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)'
+                date_natural = re.search(rf'(\d{{1,2}})\s+{month_pattern}', message_lower)
+                if date_natural:
+                    day = date_natural.group(1)
+                    month_str = date_natural.group(2)
+                    logger.info(f"📅 Extracted natural date: day={day}, month={month_str}")
+                    # Convert month name to number
+                    month_map = {
+                        'january': '01', 'jan': '01', 'february': '02', 'feb': '02',
+                        'march': '03', 'mar': '03', 'april': '04', 'apr': '04',
+                        'may': '05', 'june': '06', 'jun': '06', 'july': '07', 'jul': '07',
+                        'august': '08', 'aug': '08', 'september': '09', 'sep': '09',
+                        'october': '10', 'oct': '10', 'november': '11', 'nov': '11',
+                        'december': '12', 'dec': '12'
+                    }
+                    month_num = month_map.get(month_str.lower(), '01')
+                    year = '2026'
+                    update_data['due_date'] = f"{year}-{month_num}-{day.zfill(2)}T00:00:00"
+                    logger.info(f"📅 Converted to ISO: {update_data['due_date']}")
+                else:
+                    # Try "july 17" format
+                    date_natural2 = re.search(rf'{month_pattern}\s+(\d{{1,2}})', message_lower)
+                    if date_natural2:
+                        month_str = date_natural2.group(1)
+                        day = date_natural2.group(2)
+                        logger.info(f"📅 Extracted natural date (reverse): month={month_str}, day={day}")
+                        month_map = {
+                            'january': '01', 'jan': '01', 'february': '02', 'feb': '02',
+                            'march': '03', 'mar': '03', 'april': '04', 'apr': '04',
+                            'may': '05', 'june': '06', 'jun': '06', 'july': '07', 'jul': '07',
+                            'august': '08', 'aug': '08', 'september': '09', 'sep': '09',
+                            'october': '10', 'oct': '10', 'november': '11', 'nov': '11',
+                            'december': '12', 'dec': '12'
+                        }
+                        month_num = month_map.get(month_str.lower(), '01')
+                        year = '2026'
+                        update_data['due_date'] = f"{year}-{month_num}-{day.zfill(2)}T00:00:00"
+                        logger.info(f"📅 Converted to ISO: {update_data['due_date']}")
+                    else:
+                        logger.warning(f"📅 Could not extract date from message")
+
+            logger.info(f"📅 Final update_data: {update_data}")
+
+        # === MARK INCOMPLETE (CHECK BEFORE MARK COMPLETE!) ===
+        elif 'incomplete' in message_lower or 'uncomplete' in message_lower or 'not complete' in message_lower:
             operation = 'mark_incomplete'
             logger.info(f"⏸️ ORCHESTRATION: Detected mark incomplete")
 
+            # Extract task reference with improved pattern
             quoted = re.search(r'["\']([^"\']+)["\']', message)
             if quoted:
                 task_ref = quoted.group(1)
             else:
-                # Extract task name from patterns like "mark X as incomplete"
-                match = re.search(r'mark\s+(.+?)\s+as\s+incomplete', message_lower)
+                # Remove common filler words
+                clean_msg = message_lower.replace(' my ', ' ').replace(' the ', ' ').replace(' task ', ' ').replace(' as ', ' ')
+
+                # Try: mark X incomplete/uncomplete
+                match = re.search(r'mark\s+(.+?)\s+(?:incomplet|uncomplet)', clean_msg)
                 if match:
                     task_ref = match.group(1).strip()
 
             update_data['completed'] = False
 
         # === PRIORITY OPERATIONS ===
-        elif 'priority' in message_lower or 'high priority' in message_lower or 'low priority' in message_lower:
+        elif 'priority' in message_lower or 'high priority' in message_lower or 'low priority' in message_lower or 'medium priority' in message_lower:
             operation = 'set_priority'
             logger.info(f"🔔 ORCHESTRATION: Detected priority change")
 
-            # Extract task reference
-            quoted = re.search(r'["\']([^"\']+)["\']', message)
-            if quoted:
-                task_ref = quoted.group(1)
-            else:
-                # Try patterns like "set priority of X to high"
-                match = re.search(r'(?:priority|important|urgency).*?(?:of|for)\s+(.+?)\s+(?:to|as)', message_lower)
-                if match:
-                    task_ref = match.group(1).strip()
-
-            # Extract priority level
+            # Extract priority level first
             if 'high' in message_lower:
                 update_data['priority'] = 'high'
             elif 'medium' in message_lower:
@@ -520,24 +606,125 @@ class OpenAIAgentService(AgentService):
             elif 'low' in message_lower:
                 update_data['priority'] = 'low'
 
-        # === DUE DATE OPERATIONS ===
-        elif 'due' in message_lower or 'deadline' in message_lower:
-            operation = 'set_due_date'
-            logger.info(f"📅 ORCHESTRATION: Detected due date change")
-
-            # Extract task reference
+            # Extract task reference - improved patterns
             quoted = re.search(r'["\']([^"\']+)["\']', message)
             if quoted:
                 task_ref = quoted.group(1)
             else:
-                match = re.search(r'(?:due|deadline).*?(?:of|for)\s+(.+?)\s+(?:to|as|on)', message_lower)
+                # Remove common filler words
+                clean_msg = message_lower.replace(' my ', ' ').replace(' the ', ' ').replace(' task ', ' ')
+
+                # Pattern: "change/set priority [of/for] X to high/medium/low"
+                match = re.search(r'(?:change|set|make|update).*?priority.*?(?:of|for)\s+(.+?)\s+(?:to|as)', clean_msg)
                 if match:
                     task_ref = match.group(1).strip()
+                else:
+                    # Pattern: "change X priority to high"
+                    match = re.search(r'(?:change|set|make|update)\s+(.+?)\s+priority', clean_msg)
+                    if match:
+                        task_ref = match.group(1).strip()
+                    else:
+                        # Pattern: "X high priority" or "high priority X"
+                        # Extract task name before/after priority keywords
+                        for priority_word in ['high priority', 'medium priority', 'low priority', 'priority']:
+                            if priority_word in clean_msg:
+                                parts = clean_msg.split(priority_word)
+                                # Try the part before priority keyword
+                                if len(parts[0].strip()) > 2:
+                                    task_ref = parts[0].strip()
+                                    break
+                                # Try the part after priority keyword
+                                elif len(parts) > 1 and len(parts[1].strip()) > 2:
+                                    task_ref = parts[1].strip()
+                                    break
 
-            # Extract date - simplified, user should provide ISO format or clear date
-            date_match = re.search(r'\d{4}-\d{2}-\d{2}', message)
+        # === DUE DATE OPERATIONS ===
+        elif 'due' in message_lower or 'deadline' in message_lower or 'due date' in message_lower:
+            operation = 'set_due_date'
+            logger.info(f"📅 ORCHESTRATION: Detected due date change")
+
+            # Extract task reference first
+            quoted = re.search(r'["\']([^"\']+)["\']', message)
+            if quoted:
+                task_ref = quoted.group(1)
+                logger.info(f"📅 Extracted task from quotes: '{task_ref}'")
+            else:
+                # Remove common filler words
+                clean_msg = message_lower.replace(' my ', ' ').replace(' the ', ' ').replace(' task ', ' ')
+
+                # Pattern: "set/change due date [of/for] X to DATE"
+                match = re.search(r'(?:set|change|update|edit).*?due.*?(?:of|for)\s+(.+?)\s+(?:to|as)', clean_msg)
+                if match:
+                    task_ref = match.group(1).strip()
+                    logger.info(f"📅 Extracted task (pattern 1): '{task_ref}'")
+                else:
+                    # Pattern: "X due date DATE" or "due date for X"
+                    match = re.search(r'due.*?(?:date|deadline).*?(?:of|for)\s+(.+?)(?:\s+to|\s+is|\s*$)', clean_msg)
+                    if match:
+                        task_ref = match.group(1).strip()
+                        logger.info(f"📅 Extracted task (pattern 2): '{task_ref}'")
+                    else:
+                        # Pattern: "edit X due date"
+                        match = re.search(r'(?:edit|change|update)\s+(.+?)\s+due', clean_msg)
+                        if match:
+                            task_ref = match.group(1).strip()
+                            logger.info(f"📅 Extracted task (pattern 3): '{task_ref}'")
+
+            logger.info(f"📅 Final extracted task_ref: '{task_ref}'")
+
+            # Extract date - handle multiple formats
+            logger.info(f"📅 Attempting to extract date from: '{message}'")
+
+            # Try ISO format first (YYYY-MM-DD)
+            date_match = re.search(r'(\d{4}-\d{2}-\d{2})', message)
             if date_match:
                 update_data['due_date'] = date_match.group(0) + 'T00:00:00'
+                logger.info(f"📅 Extracted ISO date: {update_data['due_date']}")
+            else:
+                # Try natural language dates like "17 july" or "july 17"
+                month_pattern = r'(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)'
+                date_natural = re.search(rf'(\d{{1,2}})\s+{month_pattern}', message_lower)
+                if date_natural:
+                    day = date_natural.group(1)
+                    month_str = date_natural.group(2)
+                    logger.info(f"📅 Extracted natural date: day={day}, month={month_str}")
+                    # Convert month name to number
+                    month_map = {
+                        'january': '01', 'jan': '01', 'february': '02', 'feb': '02',
+                        'march': '03', 'mar': '03', 'april': '04', 'apr': '04',
+                        'may': '05', 'june': '06', 'jun': '06', 'july': '07', 'jul': '07',
+                        'august': '08', 'aug': '08', 'september': '09', 'sep': '09',
+                        'october': '10', 'oct': '10', 'november': '11', 'nov': '11',
+                        'december': '12', 'dec': '12'
+                    }
+                    month_num = month_map.get(month_str.lower(), '01')
+                    # Use current year (2026)
+                    year = '2026'
+                    update_data['due_date'] = f"{year}-{month_num}-{day.zfill(2)}T00:00:00"
+                    logger.info(f"📅 Converted to ISO: {update_data['due_date']}")
+                else:
+                    # Try "july 17" format
+                    date_natural2 = re.search(rf'{month_pattern}\s+(\d{{1,2}})', message_lower)
+                    if date_natural2:
+                        month_str = date_natural2.group(1)
+                        day = date_natural2.group(2)
+                        logger.info(f"📅 Extracted natural date (reverse): month={month_str}, day={day}")
+                        month_map = {
+                            'january': '01', 'jan': '01', 'february': '02', 'feb': '02',
+                            'march': '03', 'mar': '03', 'april': '04', 'apr': '04',
+                            'may': '05', 'june': '06', 'jun': '06', 'july': '07', 'jul': '07',
+                            'august': '08', 'aug': '08', 'september': '09', 'sep': '09',
+                            'october': '10', 'oct': '10', 'november': '11', 'nov': '11',
+                            'december': '12', 'dec': '12'
+                        }
+                        month_num = month_map.get(month_str.lower(), '01')
+                        year = '2026'
+                        update_data['due_date'] = f"{year}-{month_num}-{day.zfill(2)}T00:00:00"
+                        logger.info(f"📅 Converted to ISO: {update_data['due_date']}")
+                    else:
+                        logger.warning(f"📅 Could not extract date from message")
+
+            logger.info(f"📅 Final update_data: {update_data}")
 
         # === MARK COMPLETE (CHECK AFTER MARK INCOMPLETE!) ===
         elif any(keyword in message_lower for keyword in ['mark', 'complete', 'done', 'finish']):
@@ -545,19 +732,26 @@ class OpenAIAgentService(AgentService):
                 operation = 'mark_complete'
                 logger.info(f"✅ ORCHESTRATION: Detected mark complete")
 
+                # Try to extract task reference with multiple patterns
                 quoted = re.search(r'["\']([^"\']+)["\']', message)
                 if quoted:
                     task_ref = quoted.group(1)
                 else:
-                    match = re.search(r'mark\s+(.+?)\s+as', message_lower)
+                    # Pattern 1: "mark [my/the] X [task] [as] completed/done"
+                    # Remove common filler words and extract core task name
+                    clean_msg = message_lower.replace(' my ', ' ').replace(' the ', ' ').replace(' task ', ' ').replace(' as ', ' ')
+
+                    # Try: mark X completed/done
+                    match = re.search(r'mark\s+(.+?)\s+(?:complet|done|finish)', clean_msg)
                     if match:
                         task_ref = match.group(1).strip()
                     else:
-                        for keyword in ['complete ', 'finish ', 'done with ']:
-                            if keyword in message_lower:
-                                parts = message_lower.split(keyword, 1)
+                        # Try: complete/done/finish X
+                        for keyword in ['complete ', 'finish ', 'done ', 'completed ', 'finished ']:
+                            if keyword in clean_msg:
+                                parts = clean_msg.split(keyword, 1)
                                 if len(parts) > 1:
-                                    task_ref = parts[1].replace(' as completed', '').replace(' as done', '').strip()
+                                    task_ref = parts[1].strip()
                                     break
 
                 update_data['completed'] = True
@@ -567,15 +761,19 @@ class OpenAIAgentService(AgentService):
             operation = 'delete'
             logger.info(f"🗑️ ORCHESTRATION: Detected delete")
 
+            # Extract task reference - handle natural language
             quoted = re.search(r'["\']([^"\']+)["\']', message)
             if quoted:
                 task_ref = quoted.group(1)
             else:
-                for keyword in ['delete ', 'remove ', 'erase ', 'delete the ', 'remove the ', 'erase the ']:
-                    if keyword in message_lower:
-                        parts = message_lower.split(keyword, 1)
+                # Remove common filler words
+                clean_msg = message_lower.replace(' my ', ' ').replace(' the ', ' ').replace(' task ', ' ').replace(' a ', ' ')
+
+                for keyword in ['delete ', 'remove ', 'erase ']:
+                    if keyword in clean_msg:
+                        parts = clean_msg.split(keyword, 1)
                         if len(parts) > 1:
-                            task_ref = parts[1].replace('task', '').replace('todo', '').strip()
+                            task_ref = parts[1].strip()
                             break
 
         # === EDIT/UPDATE TITLE ===
@@ -583,6 +781,7 @@ class OpenAIAgentService(AgentService):
             operation = 'update_title'
             logger.info(f"✏️ ORCHESTRATION: Detected title update")
 
+            # Try multiple patterns
             # Pattern 1: change "old" to "new"
             pattern1 = r'["\']([^"\']+)["\'].*?(?:to|into)\s+["\']([^"\']+)["\']'
             match1 = re.search(pattern1, message)
@@ -590,12 +789,531 @@ class OpenAIAgentService(AgentService):
                 task_ref = match1.group(1)
                 update_data['title'] = match1.group(2)
             else:
-                # Pattern 2: change old to new
+                # Pattern 2: change X to Y (natural language)
+                # Remove common filler words
+                clean_msg = message_lower.replace(' my ', ' ').replace(' the ', ' ').replace(' task ', ' ')
+
+                # Try: change/update/rename X to Y
                 pattern2 = r'(?:change|update|rename|edit|modify)\s+(.+?)\s+(?:to|into)\s+(.+?)$'
-                match2 = re.search(pattern2, message_lower)
+                match2 = re.search(pattern2, clean_msg)
                 if match2:
-                    task_ref = match2.group(1).replace('the ', '').replace('task ', '').strip()
-                    update_data['title'] = match2.group(2).replace('the ', '').replace('task ', '').strip()
+                    task_ref = match2.group(1).strip()
+                    update_data['title'] = match2.group(2).strip()
+
+        # === ADD/CREATE NEW TASK ===
+        elif any(keyword in message_lower for keyword in ['add', 'create', 'new task', 'make a task']):
+            operation = 'add_task'
+            logger.info(f"➕ ORCHESTRATION: Detected add task")
+
+            # For add operations, extract title and description
+            for keyword in ['add ', 'create ', 'add a task ', 'create a task ', 'new task ']:
+                if keyword in message_lower:
+                    parts = message_lower.split(keyword, 1)
+                    if len(parts) > 1:
+                        task_content = parts[1].strip()
+                        # Remove common endings
+                        task_content = task_content.replace('called', '').replace('named', '').strip()
+                        # Check for quotes
+                        quoted = re.search(r'["\']([^"\']+)["\']', task_content)
+                        if quoted:
+                            update_data['title'] = quoted.group(1)
+                        else:
+                            update_data['title'] = task_content[:200]  # Limit to 200 chars
+                        break
+
+        if not operation:
+            logger.info("❌ ORCHESTRATION: No operation detected, falling back to AI")
+            return None
+
+        # For ADD operation, we don't need to find existing task
+        if operation == 'add_task':
+            if not update_data.get('title'):
+                logger.warning(f"⚠️ ORCHESTRATION: Add task detected but could not extract title")
+                return None
+
+            logger.info(f"🎯 ORCHESTRATION: Operation=add_task, Title='{update_data['title']}'")
+            logger.info("➕ ORCHESTRATION: Executing add_todo directly")
+
+            result = self._execute_tool('add_todo', {
+                'user_id': user_id,
+                'title': update_data['title'],
+                'description': update_data.get('description')
+            })
+
+            if 'error' not in result:
+                result['orchestrated'] = True
+                result['operation'] = 'add_task'
+                logger.info("✅ ORCHESTRATION: Add task successful")
+            else:
+                logger.error(f"❌ ORCHESTRATION: Add task failed: {result.get('error')}")
+
+            return result
+
+        # For operations that need due_date or priority, validate they were extracted
+        if operation == 'set_due_date' and 'due_date' not in update_data:
+            logger.error(f"❌ ORCHESTRATION: Due date operation detected but no date extracted from message")
+            return {
+                'error': 'Could not understand the date format. Please use format like "20 july" or "2026-07-20"',
+                'operation': operation
+            }
+
+        if operation == 'set_priority' and 'priority' not in update_data:
+            logger.error(f"❌ ORCHESTRATION: Priority operation detected but no priority level extracted")
+            return {
+                'error': 'Could not understand the priority level. Please specify: high, medium, or low',
+                'operation': operation
+            }
+
+        # For all other operations, we need to find the task first
+        if not task_ref:
+            logger.warning(f"⚠️ ORCHESTRATION: Operation detected but could not extract task reference")
+            return None
+
+        logger.info(f"🎯 ORCHESTRATION: Operation={operation}, Task='{task_ref}', Data={update_data}")
+
+        # Step 1: List todos to find the task
+        logger.info("📋 ORCHESTRATION: Step 1 - Calling list_todos")
+        list_result = self._execute_tool('list_todos', {'user_id': user_id})
+        logger.info(f"📋 ORCHESTRATION: list_todos returned: {list_result}")
+
+        if 'error' in list_result or not list_result.get('todos'):
+            logger.error("❌ ORCHESTRATION: Failed to list todos")
+            return {
+                'error': 'Could not retrieve tasks',
+                'operation': operation
+            }
+
+        # Step 2: Find matching task using fuzzy matching
+        matching_tasks = []
+        task_ref_lower = task_ref.lower().strip()
+        task_ref_words = set(task_ref_lower.split())
+
+        logger.info(f"🔍 ORCHESTRATION: Searching for task matching '{task_ref_lower}'")
+
+        for task in list_result['todos']:
+            title_lower = task['title'].lower()
+            title_words = set(title_lower.split())
+
+            # Calculate match score
+            score = 0
+
+            # Exact substring match gets highest score
+            if task_ref_lower in title_lower:
+                score = 100
+            # Check word overlap
+            elif task_ref_words:
+                matching_words = task_ref_words.intersection(title_words)
+                if matching_words:
+                    # Score based on percentage of search words found
+                    score = (len(matching_words) / len(task_ref_words)) * 80
+                    # Bonus if task title starts with search term
+                    if title_lower.startswith(task_ref_lower):
+                        score += 10
+
+            if score > 0:
+                matching_tasks.append({
+                    'task': task,
+                    'score': score
+                })
+                logger.info(f"   Task '{task['title']}' scored {score}")
+
+        # Sort by score descending
+        matching_tasks.sort(key=lambda x: x['score'], reverse=True)
+
+        if not matching_tasks:
+            logger.warning(f"❌ ORCHESTRATION: Task '{task_ref}' not found")
+            available_titles = [t['title'] for t in list_result['todos']]
+            logger.warning(f"Available tasks: {available_titles}")
+            return {
+                'error': f'Task "{task_ref}" not found. Available tasks: {", ".join(available_titles[:3])}',
+                'operation': operation,
+                'available_tasks': available_titles
+            }
+
+        # If we have multiple high-scoring matches (within 20 points of top score), ask for clarification
+        top_score = matching_tasks[0]['score']
+        high_scoring = [m for m in matching_tasks if m['score'] >= top_score - 20]
+
+        if len(high_scoring) > 1 and top_score < 100:
+            # Multiple similar matches - ask user to clarify
+            logger.warning(f"⚠️ ORCHESTRATION: Multiple tasks match '{task_ref}'")
+            match_titles = [m['task']['title'] for m in high_scoring]
+            return {
+                'error': f'Multiple tasks match "{task_ref}". Did you mean: {" or ".join(match_titles)}? Please be more specific.',
+                'operation': operation,
+                'similar_tasks': match_titles
+            }
+
+        # Use the best match
+        matching_task = matching_tasks[0]['task']
+        task_id = matching_task['id']
+        logger.info(f"✅ ORCHESTRATION: Found task '{matching_task['title']}' (ID: {task_id}, score: {matching_tasks[0]['score']})")
+
+        # Step 3: Execute the operation
+        logger.info(f"🔧 ORCHESTRATION: Step 2 - Executing {operation}")
+
+        if operation == 'delete':
+            logger.info(f"🗑️ ORCHESTRATION: Calling delete_todo with user_id={user_id}, todo_id={task_id}")
+            result = self._execute_tool('delete_todo', {
+                'user_id': user_id,
+                'todo_id': task_id
+            })
+            logger.info(f"🗑️ ORCHESTRATION: delete_todo returned: {result}")
+
+            if 'error' not in result:
+                result['orchestrated'] = True
+                result['operation'] = 'delete'
+                result['task_title'] = matching_task['title']
+                logger.info("✅ ORCHESTRATION: Delete successful")
+            else:
+                logger.error(f"❌ ORCHESTRATION: Delete failed: {result.get('error')}")
+            return result
+
+        else:
+            # All other operations are updates
+            logger.info(f"🔧 ORCHESTRATION: Calling update_todo with user_id={user_id}, todo_id={task_id}, updates={update_data}")
+            result = self._execute_tool('update_todo', {
+                'user_id': user_id,
+                'todo_id': task_id,
+                **update_data
+            })
+            logger.info(f"🔧 ORCHESTRATION: update_todo returned: {result}")
+
+            if 'error' not in result:
+                result['orchestrated'] = True
+                result['operation'] = operation
+                result['task_title'] = matching_task['title']
+                result['updates'] = update_data
+                logger.info(f"✅ ORCHESTRATION: {operation} successful")
+            else:
+                logger.error(f"❌ ORCHESTRATION: {operation} failed: {result.get('error')}")
+            return result
+        """
+        Detect CRUD operations and orchestrate multi-step tool calls programmatically.
+        This bypasses unreliable AI model behavior for critical operations.
+
+        Args:
+            user_id: ID of the user
+            message: User's message
+
+        Returns:
+            Result dict if operation was handled, None otherwise
+        """
+        message_lower = message.lower()
+        import re
+
+        logger.info(f"🔍 ORCHESTRATION: Analyzing message: '{message}'")
+
+        operation = None
+        task_ref = None
+        update_data = {}
+
+        # === DUE DATE OPERATIONS (CHECK FIRST - most specific) ===
+        if 'due date' in message_lower or ('due' in message_lower and any(word in message_lower for word in ['set', 'add', 'change', 'update', 'edit'])) or 'deadline' in message_lower:
+            operation = 'set_due_date'
+            logger.info(f"📅 ORCHESTRATION: Detected due date change")
+
+            # Extract task reference first
+            quoted = re.search(r'["\']([^"\']+)["\']', message)
+            if quoted:
+                task_ref = quoted.group(1)
+                logger.info(f"📅 Extracted task from quotes: '{task_ref}'")
+            else:
+                # Remove common filler words
+                clean_msg = message_lower.replace(' my ', ' ').replace(' the ', ' ').replace(' task ', ' ')
+
+                # Pattern 1: "in/for X" - task comes after "in" or "for"
+                match = re.search(r'(?:in|for)\s+(.+?)(?:\s*$)', clean_msg)
+                if match:
+                    # Remove any date from the extracted task name
+                    potential_task = match.group(1).strip()
+                    # Remove digits and month names that are part of the date
+                    potential_task = re.sub(r'\d+\s*(?:january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)', '', potential_task).strip()
+                    if potential_task:
+                        task_ref = potential_task
+                        logger.info(f"📅 Extracted task (pattern: in/for): '{task_ref}'")
+
+            logger.info(f"📅 Final extracted task_ref: '{task_ref}'")
+
+            # Extract date - handle multiple formats
+            logger.info(f"📅 Attempting to extract date from: '{message}'")
+
+            # Try ISO format first (YYYY-MM-DD)
+            date_match = re.search(r'(\d{4}-\d{2}-\d{2})', message)
+            if date_match:
+                update_data['due_date'] = date_match.group(0) + 'T00:00:00'
+                logger.info(f"📅 Extracted ISO date: {update_data['due_date']}")
+            else:
+                # Try natural language dates like "17 july" or "july 17"
+                month_pattern = r'(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)'
+                date_natural = re.search(rf'(\d{{1,2}})\s+{month_pattern}', message_lower)
+                if date_natural:
+                    day = date_natural.group(1)
+                    month_str = date_natural.group(2)
+                    logger.info(f"📅 Extracted natural date: day={day}, month={month_str}")
+                    # Convert month name to number
+                    month_map = {
+                        'january': '01', 'jan': '01', 'february': '02', 'feb': '02',
+                        'march': '03', 'mar': '03', 'april': '04', 'apr': '04',
+                        'may': '05', 'june': '06', 'jun': '06', 'july': '07', 'jul': '07',
+                        'august': '08', 'aug': '08', 'september': '09', 'sep': '09',
+                        'october': '10', 'oct': '10', 'november': '11', 'nov': '11',
+                        'december': '12', 'dec': '12'
+                    }
+                    month_num = month_map.get(month_str.lower(), '01')
+                    year = '2026'
+                    update_data['due_date'] = f"{year}-{month_num}-{day.zfill(2)}T00:00:00"
+                    logger.info(f"📅 Converted to ISO: {update_data['due_date']}")
+                else:
+                    # Try "july 17" format
+                    date_natural2 = re.search(rf'{month_pattern}\s+(\d{{1,2}})', message_lower)
+                    if date_natural2:
+                        month_str = date_natural2.group(1)
+                        day = date_natural2.group(2)
+                        logger.info(f"📅 Extracted natural date (reverse): month={month_str}, day={day}")
+                        month_map = {
+                            'january': '01', 'jan': '01', 'february': '02', 'feb': '02',
+                            'march': '03', 'mar': '03', 'april': '04', 'apr': '04',
+                            'may': '05', 'june': '06', 'jun': '06', 'july': '07', 'jul': '07',
+                            'august': '08', 'aug': '08', 'september': '09', 'sep': '09',
+                            'october': '10', 'oct': '10', 'november': '11', 'nov': '11',
+                            'december': '12', 'dec': '12'
+                        }
+                        month_num = month_map.get(month_str.lower(), '01')
+                        year = '2026'
+                        update_data['due_date'] = f"{year}-{month_num}-{day.zfill(2)}T00:00:00"
+                        logger.info(f"📅 Converted to ISO: {update_data['due_date']}")
+                    else:
+                        logger.warning(f"📅 Could not extract date from message")
+
+            logger.info(f"📅 Final update_data: {update_data}")
+
+        # === MARK INCOMPLETE (CHECK BEFORE MARK COMPLETE!) ===
+        elif 'incomplete' in message_lower or 'uncomplete' in message_lower or 'not complete' in message_lower:
+            operation = 'mark_incomplete'
+            logger.info(f"⏸️ ORCHESTRATION: Detected mark incomplete")
+
+            # Extract task reference with improved pattern
+            quoted = re.search(r'["\']([^"\']+)["\']', message)
+            if quoted:
+                task_ref = quoted.group(1)
+            else:
+                # Remove common filler words
+                clean_msg = message_lower.replace(' my ', ' ').replace(' the ', ' ').replace(' task ', ' ').replace(' as ', ' ')
+
+                # Try: mark X incomplete/uncomplete
+                match = re.search(r'mark\s+(.+?)\s+(?:incomplet|uncomplet)', clean_msg)
+                if match:
+                    task_ref = match.group(1).strip()
+
+            update_data['completed'] = False
+
+        # === PRIORITY OPERATIONS ===
+        elif 'priority' in message_lower or 'high priority' in message_lower or 'low priority' in message_lower or 'medium priority' in message_lower:
+            operation = 'set_priority'
+            logger.info(f"🔔 ORCHESTRATION: Detected priority change")
+
+            # Extract priority level first
+            if 'high' in message_lower:
+                update_data['priority'] = 'high'
+            elif 'medium' in message_lower:
+                update_data['priority'] = 'medium'
+            elif 'low' in message_lower:
+                update_data['priority'] = 'low'
+
+            # Extract task reference - improved patterns
+            quoted = re.search(r'["\']([^"\']+)["\']', message)
+            if quoted:
+                task_ref = quoted.group(1)
+            else:
+                # Remove common filler words
+                clean_msg = message_lower.replace(' my ', ' ').replace(' the ', ' ').replace(' task ', ' ')
+
+                # Pattern: "change/set priority [of/for] X to high/medium/low"
+                match = re.search(r'(?:change|set|make|update).*?priority.*?(?:of|for)\s+(.+?)\s+(?:to|as)', clean_msg)
+                if match:
+                    task_ref = match.group(1).strip()
+                else:
+                    # Pattern: "change X priority to high"
+                    match = re.search(r'(?:change|set|make|update)\s+(.+?)\s+priority', clean_msg)
+                    if match:
+                        task_ref = match.group(1).strip()
+                    else:
+                        # Pattern: "X high priority" or "high priority X"
+                        # Extract task name before/after priority keywords
+                        for priority_word in ['high priority', 'medium priority', 'low priority', 'priority']:
+                            if priority_word in clean_msg:
+                                parts = clean_msg.split(priority_word)
+                                # Try the part before priority keyword
+                                if len(parts[0].strip()) > 2:
+                                    task_ref = parts[0].strip()
+                                    break
+                                # Try the part after priority keyword
+                                elif len(parts) > 1 and len(parts[1].strip()) > 2:
+                                    task_ref = parts[1].strip()
+                                    break
+
+        # === DUE DATE OPERATIONS ===
+        elif 'due' in message_lower or 'deadline' in message_lower or 'due date' in message_lower:
+            operation = 'set_due_date'
+            logger.info(f"📅 ORCHESTRATION: Detected due date change")
+
+            # Extract task reference first
+            quoted = re.search(r'["\']([^"\']+)["\']', message)
+            if quoted:
+                task_ref = quoted.group(1)
+                logger.info(f"📅 Extracted task from quotes: '{task_ref}'")
+            else:
+                # Remove common filler words
+                clean_msg = message_lower.replace(' my ', ' ').replace(' the ', ' ').replace(' task ', ' ')
+
+                # Pattern: "set/change due date [of/for] X to DATE"
+                match = re.search(r'(?:set|change|update|edit).*?due.*?(?:of|for)\s+(.+?)\s+(?:to|as)', clean_msg)
+                if match:
+                    task_ref = match.group(1).strip()
+                    logger.info(f"📅 Extracted task (pattern 1): '{task_ref}'")
+                else:
+                    # Pattern: "X due date DATE" or "due date for X"
+                    match = re.search(r'due.*?(?:date|deadline).*?(?:of|for)\s+(.+?)(?:\s+to|\s+is|\s*$)', clean_msg)
+                    if match:
+                        task_ref = match.group(1).strip()
+                        logger.info(f"📅 Extracted task (pattern 2): '{task_ref}'")
+                    else:
+                        # Pattern: "edit X due date"
+                        match = re.search(r'(?:edit|change|update)\s+(.+?)\s+due', clean_msg)
+                        if match:
+                            task_ref = match.group(1).strip()
+                            logger.info(f"📅 Extracted task (pattern 3): '{task_ref}'")
+
+            logger.info(f"📅 Final extracted task_ref: '{task_ref}'")
+
+            # Extract date - handle multiple formats
+            logger.info(f"📅 Attempting to extract date from: '{message}'")
+
+            # Try ISO format first (YYYY-MM-DD)
+            date_match = re.search(r'(\d{4}-\d{2}-\d{2})', message)
+            if date_match:
+                update_data['due_date'] = date_match.group(0) + 'T00:00:00'
+                logger.info(f"📅 Extracted ISO date: {update_data['due_date']}")
+            else:
+                # Try natural language dates like "17 july" or "july 17"
+                month_pattern = r'(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)'
+                date_natural = re.search(rf'(\d{{1,2}})\s+{month_pattern}', message_lower)
+                if date_natural:
+                    day = date_natural.group(1)
+                    month_str = date_natural.group(2)
+                    logger.info(f"📅 Extracted natural date: day={day}, month={month_str}")
+                    # Convert month name to number
+                    month_map = {
+                        'january': '01', 'jan': '01', 'february': '02', 'feb': '02',
+                        'march': '03', 'mar': '03', 'april': '04', 'apr': '04',
+                        'may': '05', 'june': '06', 'jun': '06', 'july': '07', 'jul': '07',
+                        'august': '08', 'aug': '08', 'september': '09', 'sep': '09',
+                        'october': '10', 'oct': '10', 'november': '11', 'nov': '11',
+                        'december': '12', 'dec': '12'
+                    }
+                    month_num = month_map.get(month_str.lower(), '01')
+                    # Use current year (2026)
+                    year = '2026'
+                    update_data['due_date'] = f"{year}-{month_num}-{day.zfill(2)}T00:00:00"
+                    logger.info(f"📅 Converted to ISO: {update_data['due_date']}")
+                else:
+                    # Try "july 17" format
+                    date_natural2 = re.search(rf'{month_pattern}\s+(\d{{1,2}})', message_lower)
+                    if date_natural2:
+                        month_str = date_natural2.group(1)
+                        day = date_natural2.group(2)
+                        logger.info(f"📅 Extracted natural date (reverse): month={month_str}, day={day}")
+                        month_map = {
+                            'january': '01', 'jan': '01', 'february': '02', 'feb': '02',
+                            'march': '03', 'mar': '03', 'april': '04', 'apr': '04',
+                            'may': '05', 'june': '06', 'jun': '06', 'july': '07', 'jul': '07',
+                            'august': '08', 'aug': '08', 'september': '09', 'sep': '09',
+                            'october': '10', 'oct': '10', 'november': '11', 'nov': '11',
+                            'december': '12', 'dec': '12'
+                        }
+                        month_num = month_map.get(month_str.lower(), '01')
+                        year = '2026'
+                        update_data['due_date'] = f"{year}-{month_num}-{day.zfill(2)}T00:00:00"
+                        logger.info(f"📅 Converted to ISO: {update_data['due_date']}")
+                    else:
+                        logger.warning(f"📅 Could not extract date from message")
+
+            logger.info(f"📅 Final update_data: {update_data}")
+
+        # === MARK COMPLETE (CHECK AFTER MARK INCOMPLETE!) ===
+        elif any(keyword in message_lower for keyword in ['mark', 'complete', 'done', 'finish']):
+            if 'complete' in message_lower or 'done' in message_lower or 'finish' in message_lower:
+                operation = 'mark_complete'
+                logger.info(f"✅ ORCHESTRATION: Detected mark complete")
+
+                # Try to extract task reference with multiple patterns
+                quoted = re.search(r'["\']([^"\']+)["\']', message)
+                if quoted:
+                    task_ref = quoted.group(1)
+                else:
+                    # Pattern 1: "mark [my/the] X [task] [as] completed/done"
+                    # Remove common filler words and extract core task name
+                    clean_msg = message_lower.replace(' my ', ' ').replace(' the ', ' ').replace(' task ', ' ').replace(' as ', ' ')
+
+                    # Try: mark X completed/done
+                    match = re.search(r'mark\s+(.+?)\s+(?:complet|done|finish)', clean_msg)
+                    if match:
+                        task_ref = match.group(1).strip()
+                    else:
+                        # Try: complete/done/finish X
+                        for keyword in ['complete ', 'finish ', 'done ', 'completed ', 'finished ']:
+                            if keyword in clean_msg:
+                                parts = clean_msg.split(keyword, 1)
+                                if len(parts) > 1:
+                                    task_ref = parts[1].strip()
+                                    break
+
+                update_data['completed'] = True
+
+        # === DELETE ===
+        elif any(keyword in message_lower for keyword in ['delete', 'remove', 'erase']):
+            operation = 'delete'
+            logger.info(f"🗑️ ORCHESTRATION: Detected delete")
+
+            # Extract task reference - handle natural language
+            quoted = re.search(r'["\']([^"\']+)["\']', message)
+            if quoted:
+                task_ref = quoted.group(1)
+            else:
+                # Remove common filler words
+                clean_msg = message_lower.replace(' my ', ' ').replace(' the ', ' ').replace(' task ', ' ').replace(' a ', ' ')
+
+                for keyword in ['delete ', 'remove ', 'erase ']:
+                    if keyword in clean_msg:
+                        parts = clean_msg.split(keyword, 1)
+                        if len(parts) > 1:
+                            task_ref = parts[1].strip()
+                            break
+
+        # === EDIT/UPDATE TITLE ===
+        elif any(keyword in message_lower for keyword in ['change', 'update', 'modify', 'rename', 'edit']):
+            operation = 'update_title'
+            logger.info(f"✏️ ORCHESTRATION: Detected title update")
+
+            # Try multiple patterns
+            # Pattern 1: change "old" to "new"
+            pattern1 = r'["\']([^"\']+)["\'].*?(?:to|into)\s+["\']([^"\']+)["\']'
+            match1 = re.search(pattern1, message)
+            if match1:
+                task_ref = match1.group(1)
+                update_data['title'] = match1.group(2)
+            else:
+                # Pattern 2: change X to Y (natural language)
+                # Remove common filler words
+                clean_msg = message_lower.replace(' my ', ' ').replace(' the ', ' ').replace(' task ', ' ')
+
+                # Try: change/update/rename X to Y
+                pattern2 = r'(?:change|update|rename|edit|modify)\s+(.+?)\s+(?:to|into)\s+(.+?)$'
+                match2 = re.search(pattern2, clean_msg)
+                if match2:
+                    task_ref = match2.group(1).strip()
+                    update_data['title'] = match2.group(2).strip()
 
         if not operation:
             logger.info("❌ ORCHESTRATION: No operation detected, falling back to AI")
@@ -710,23 +1428,92 @@ class OpenAIAgentService(AgentService):
                 update_data['priority'] = 'low'
 
         # === DUE DATE OPERATIONS ===
-        elif 'due' in message_lower or 'deadline' in message_lower:
+        elif 'due' in message_lower or 'deadline' in message_lower or 'due date' in message_lower:
             operation = 'set_due_date'
             logger.info(f"📅 ORCHESTRATION: Detected due date change")
 
-            # Extract task reference
+            # Extract task reference first
             quoted = re.search(r'["\']([^"\']+)["\']', message)
             if quoted:
                 task_ref = quoted.group(1)
+                logger.info(f"📅 Extracted task from quotes: '{task_ref}'")
             else:
-                match = re.search(r'(?:due|deadline).*?(?:of|for)\s+(.+?)\s+(?:to|as|on)', message_lower)
+                # Remove common filler words
+                clean_msg = message_lower.replace(' my ', ' ').replace(' the ', ' ').replace(' task ', ' ')
+
+                # Pattern: "set/change due date [of/for] X to DATE"
+                match = re.search(r'(?:set|change|update|edit).*?due.*?(?:of|for)\s+(.+?)\s+(?:to|as)', clean_msg)
                 if match:
                     task_ref = match.group(1).strip()
+                    logger.info(f"📅 Extracted task (pattern 1): '{task_ref}'")
+                else:
+                    # Pattern: "X due date DATE" or "due date for X"
+                    match = re.search(r'due.*?(?:date|deadline).*?(?:of|for)\s+(.+?)(?:\s+to|\s+is|\s*$)', clean_msg)
+                    if match:
+                        task_ref = match.group(1).strip()
+                        logger.info(f"📅 Extracted task (pattern 2): '{task_ref}'")
+                    else:
+                        # Pattern: "edit X due date"
+                        match = re.search(r'(?:edit|change|update)\s+(.+?)\s+due', clean_msg)
+                        if match:
+                            task_ref = match.group(1).strip()
+                            logger.info(f"📅 Extracted task (pattern 3): '{task_ref}'")
 
-            # Extract date - simplified, user should provide ISO format or clear date
-            date_match = re.search(r'\d{4}-\d{2}-\d{2}', message)
+            logger.info(f"📅 Final extracted task_ref: '{task_ref}'")
+
+            # Extract date - handle multiple formats
+            logger.info(f"📅 Attempting to extract date from: '{message}'")
+
+            # Try ISO format first (YYYY-MM-DD)
+            date_match = re.search(r'(\d{4}-\d{2}-\d{2})', message)
             if date_match:
                 update_data['due_date'] = date_match.group(0) + 'T00:00:00'
+                logger.info(f"📅 Extracted ISO date: {update_data['due_date']}")
+            else:
+                # Try natural language dates like "17 july" or "july 17"
+                month_pattern = r'(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)'
+                date_natural = re.search(rf'(\d{{1,2}})\s+{month_pattern}', message_lower)
+                if date_natural:
+                    day = date_natural.group(1)
+                    month_str = date_natural.group(2)
+                    logger.info(f"📅 Extracted natural date: day={day}, month={month_str}")
+                    # Convert month name to number
+                    month_map = {
+                        'january': '01', 'jan': '01', 'february': '02', 'feb': '02',
+                        'march': '03', 'mar': '03', 'april': '04', 'apr': '04',
+                        'may': '05', 'june': '06', 'jun': '06', 'july': '07', 'jul': '07',
+                        'august': '08', 'aug': '08', 'september': '09', 'sep': '09',
+                        'october': '10', 'oct': '10', 'november': '11', 'nov': '11',
+                        'december': '12', 'dec': '12'
+                    }
+                    month_num = month_map.get(month_str.lower(), '01')
+                    # Use current year (2026)
+                    year = '2026'
+                    update_data['due_date'] = f"{year}-{month_num}-{day.zfill(2)}T00:00:00"
+                    logger.info(f"📅 Converted to ISO: {update_data['due_date']}")
+                else:
+                    # Try "july 17" format
+                    date_natural2 = re.search(rf'{month_pattern}\s+(\d{{1,2}})', message_lower)
+                    if date_natural2:
+                        month_str = date_natural2.group(1)
+                        day = date_natural2.group(2)
+                        logger.info(f"📅 Extracted natural date (reverse): month={month_str}, day={day}")
+                        month_map = {
+                            'january': '01', 'jan': '01', 'february': '02', 'feb': '02',
+                            'march': '03', 'mar': '03', 'april': '04', 'apr': '04',
+                            'may': '05', 'june': '06', 'jun': '06', 'july': '07', 'jul': '07',
+                            'august': '08', 'aug': '08', 'september': '09', 'sep': '09',
+                            'october': '10', 'oct': '10', 'november': '11', 'nov': '11',
+                            'december': '12', 'dec': '12'
+                        }
+                        month_num = month_map.get(month_str.lower(), '01')
+                        year = '2026'
+                        update_data['due_date'] = f"{year}-{month_num}-{day.zfill(2)}T00:00:00"
+                        logger.info(f"📅 Converted to ISO: {update_data['due_date']}")
+                    else:
+                        logger.warning(f"📅 Could not extract date from message")
+
+            logger.info(f"📅 Final update_data: {update_data}")
 
         # === MARK COMPLETE ===
         elif any(keyword in message_lower for keyword in ['mark', 'complete', 'done', 'finish']):
@@ -767,15 +1554,19 @@ class OpenAIAgentService(AgentService):
             operation = 'delete'
             logger.info(f"🗑️ ORCHESTRATION: Detected delete")
 
+            # Extract task reference - handle natural language
             quoted = re.search(r'["\']([^"\']+)["\']', message)
             if quoted:
                 task_ref = quoted.group(1)
             else:
-                for keyword in ['delete ', 'remove ', 'erase ', 'delete the ', 'remove the ', 'erase the ']:
-                    if keyword in message_lower:
-                        parts = message_lower.split(keyword, 1)
+                # Remove common filler words
+                clean_msg = message_lower.replace(' my ', ' ').replace(' the ', ' ').replace(' task ', ' ').replace(' a ', ' ')
+
+                for keyword in ['delete ', 'remove ', 'erase ']:
+                    if keyword in clean_msg:
+                        parts = clean_msg.split(keyword, 1)
                         if len(parts) > 1:
-                            task_ref = parts[1].replace('task', '').replace('todo', '').strip()
+                            task_ref = parts[1].strip()
                             break
 
         # === EDIT/UPDATE TITLE ===
@@ -783,6 +1574,7 @@ class OpenAIAgentService(AgentService):
             operation = 'update_title'
             logger.info(f"✏️ ORCHESTRATION: Detected title update")
 
+            # Try multiple patterns
             # Pattern 1: change "old" to "new"
             pattern1 = r'["\']([^"\']+)["\'].*?(?:to|into)\s+["\']([^"\']+)["\']'
             match1 = re.search(pattern1, message)
@@ -790,12 +1582,16 @@ class OpenAIAgentService(AgentService):
                 task_ref = match1.group(1)
                 update_data['title'] = match1.group(2)
             else:
-                # Pattern 2: change old to new
+                # Pattern 2: change X to Y (natural language)
+                # Remove common filler words
+                clean_msg = message_lower.replace(' my ', ' ').replace(' the ', ' ').replace(' task ', ' ')
+
+                # Try: change/update/rename X to Y
                 pattern2 = r'(?:change|update|rename|edit|modify)\s+(.+?)\s+(?:to|into)\s+(.+?)$'
-                match2 = re.search(pattern2, message_lower)
+                match2 = re.search(pattern2, clean_msg)
                 if match2:
-                    task_ref = match2.group(1).replace('the ', '').replace('task ', '').strip()
-                    update_data['title'] = match2.group(2).replace('the ', '').replace('task ', '').strip()
+                    task_ref = match2.group(1).strip()
+                    update_data['title'] = match2.group(2).strip()
 
         if not operation:
             logger.info("❌ ORCHESTRATION: No operation detected, falling back to AI")
@@ -1056,6 +1852,12 @@ class OpenAIAgentService(AgentService):
             Dictionary containing the agent's response and metadata
         """
         try:
+            # Ensure clean session state at the start
+            try:
+                self.session.rollback()
+            except Exception:
+                pass  # Ignore if no active transaction
+
             # Validate inputs
             if not message or not message.strip():
                 raise ValidationError("Message cannot be empty")
@@ -1083,7 +1885,10 @@ class OpenAIAgentService(AgentService):
 
             # 🔧 INTELLIGENT ORCHESTRATION: Try to handle CRUD operations programmatically
             # This bypasses unreliable AI model behavior for critical operations
+            logger.info(f"🔍 ORCHESTRATION CHECK: User message: '{message}'")
             orchestrated_result = self._detect_and_orchestrate_crud(user_id, message)
+
+            logger.info(f"🎯 ORCHESTRATION RESULT: {orchestrated_result}")
 
             if orchestrated_result:
                 logger.info("✅ ORCHESTRATION: Operation handled, generating response")
@@ -1110,10 +1915,18 @@ class OpenAIAgentService(AgentService):
                     response_text = f"✏️ I've renamed '{orchestrated_result['task_title']}' to '{new_title}'."
                 elif operation == 'set_priority':
                     priority = orchestrated_result.get('updates', {}).get('priority', 'new priority')
-                    response_text = f"🔔 I've set '{orchestrated_result['task_title']}' priority to {priority}."
+                    task_title = orchestrated_result.get('task_title', 'the task')
+                    response_text = f"🔔 I've set the priority of '{task_title}' to {priority}."
                 elif operation == 'set_due_date':
                     due_date = orchestrated_result.get('updates', {}).get('due_date', 'specified date')
-                    response_text = f"📅 I've set the due date for '{orchestrated_result['task_title']}' to {due_date}."
+                    task_title = orchestrated_result.get('task_title', 'the task')
+                    # Format the date nicely
+                    try:
+                        date_obj = datetime.fromisoformat(due_date.replace('Z', '+00:00'))
+                        formatted_date = date_obj.strftime('%B %d, %Y')
+                        response_text = f"📅 I've set the due date for '{task_title}' to {formatted_date}."
+                    except:
+                        response_text = f"📅 I've set the due date for '{task_title}' to {due_date}."
                 else:
                     response_text = f"✅ I've updated '{orchestrated_result['task_title']}'."
 
@@ -1362,29 +2175,60 @@ class OpenAIAgentService(AgentService):
             logger.error(f"Validation error in process_message: {str(e)}")
             # Log additional context for debugging
             logger.debug(f"User ID: {user_id}, Message: {message[:100]}..., Session ID: {session_id}")
+            # Rollback any pending transaction
+            try:
+                self.session.rollback()
+            except Exception:
+                pass
             raise  # Re-raise validation errors
 
         except UnauthorizedAccessException as e:
             logger.error(f"Authorization error in process_message: {str(e)}")
             logger.info(f"User {user_id} attempted unauthorized access")
+            # Rollback any pending transaction
+            try:
+                self.session.rollback()
+            except Exception:
+                pass
             raise  # Re-raise authorization errors
 
         except APITimeoutError as e:
             logger.error(f"OpenAI API timeout in process_message: {str(e)}")
+            # Rollback any pending transaction
+            try:
+                self.session.rollback()
+            except Exception:
+                pass
             return self._process_with_stub(user_id, message, session_id, error="API timeout")
 
         except APIConnectionError as e:
             logger.error(f"OpenAI API connection error in process_message: {str(e)}")
+            # Rollback any pending transaction
+            try:
+                self.session.rollback()
+            except Exception:
+                pass
             return self._process_with_stub(user_id, message, session_id, error="Connection error")
 
         except OpenAIError as e:
             logger.error(f"OpenAI API error in process_message: {str(e)}")
+            # Rollback any pending transaction
+            try:
+                self.session.rollback()
+            except Exception:
+                pass
             return self._process_with_stub(user_id, message, session_id, error=f"OpenAI error: {str(e)}")
 
         except Exception as e:
             logger.error(f"Unexpected error in process_message: {str(e)}", exc_info=True)
             # Log additional context for debugging
             logger.debug(f"User ID: {user_id}, Message: {message[:100]}..., Session ID: {session_id}")
+
+            # CRITICAL: Rollback any pending transaction
+            try:
+                self.session.rollback()
+            except Exception as rollback_error:
+                logger.error(f"Failed to rollback transaction: {str(rollback_error)}")
 
             # Check if this is a database error that we should handle specially
             if "database" in str(e).lower() or "sql" in str(e).lower():

@@ -37,8 +37,8 @@ files_yaml:
   - "frontend/src/app/globals.css"
   - "frontend/src/components/auth/signup-form.tsx"
   - "frontend/src/app/signup/page.tsx"
-  - "frontend/src/components/auth/signin-form.tsx"
-  - "frontend/src/app/signin/page.tsx"
+  - "frontend/src/components/auth/login-form.tsx"
+  - "frontend/src/app/login/page.tsx"
   - "frontend/src/components/tasks/task-list.tsx"
   - "frontend/src/components/tasks/task-item.tsx"
   - "frontend/src/app/dashboard/page.tsx"
@@ -66,6 +66,7 @@ you have a frontend agent with skill. you agent where required to work efficient
 Successfully implemented the complete Next.js Frontend Web Application with all core functionality as specified in the feature requirements. The implementation includes:
 
 ### Authentication System:
+
 - Complete user registration and login flows with form validation
 - Secure JWT token handling with automatic attachment to API requests
 - Token refresh mechanism for long sessions
@@ -73,6 +74,7 @@ Successfully implemented the complete Next.js Frontend Web Application with all 
 - User session management via React context
 
 ### Task Management Features:
+
 - View personal task list with loading states and error handling
 - Add new tasks with validation and immediate UI updates
 - Update task descriptions with inline editing
@@ -81,6 +83,7 @@ Successfully implemented the complete Next.js Frontend Web Application with all 
 - Empty state handling for users with no tasks
 
 ### UI Components & Architecture:
+
 - Reusable UI components (Button, Input, Card) with proper styling
 - Responsive layout components with header and footer
 - Global styles configured with Tailwind CSS
@@ -88,12 +91,14 @@ Successfully implemented the complete Next.js Frontend Web Application with all 
 - Proper loading and error states throughout the application
 
 ### API Integration:
+
 - Complete API client with axios interceptors for JWT handling
 - Automatic token refresh on expiration
 - Proper error handling for network failures
 - Full integration with backend endpoints for all user stories
 
 ### Security Measures:
+
 - Cross-user data access prevention
 - Input validation and sanitization
 - Secure token storage and handling

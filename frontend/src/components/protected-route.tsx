@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { usePathname, useRouter } from 'next/navigation';
-import { useAuth } from '../context/auth-context';
-import { ReactNode, useEffect } from 'react';
+import { usePathname, useRouter } from "next/navigation";
+import { useAuth } from "../context/auth-context";
+import { ReactNode, useEffect } from "react";
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -11,7 +11,7 @@ interface ProtectedRouteProps {
 
 const ProtectedRoute = ({
   children,
-  fallbackUrl = '/signin'
+  fallbackUrl = "/login",
 }: ProtectedRouteProps) => {
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
@@ -20,7 +20,7 @@ const ProtectedRoute = ({
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       // Store the attempted path for redirect after login
-      sessionStorage.setItem('redirectAfterLogin', pathname);
+      sessionStorage.setItem("redirectAfterLogin", pathname);
       router.push(fallbackUrl);
     }
   }, [isAuthenticated, isLoading, router, fallbackUrl, pathname]);
